@@ -1,11 +1,136 @@
-name,category,address,lat,lng,price_level,rating
-Lau Pa Sat,food,18 Raffles Quay,1.2841,103.8503,1,4.3
-Maxwell Food Centre,food,1 Kadayanallah St,1.2802,103.8448,1,4.4
-Tiong Bahru Bakery,food,56 Eng Hoon St,1.2844,103.8192,2,4.2
-PS Cafe,food,28B Ann Siang Rd,1.2801,103.8459,3,4.1
-Wingstop,food,313 Orchard Rd,1.3013,103.8384,2,3.9
-Jewel Changi,activity,78 Airport Blvd,1.3601,103.9890,2,4.7
-Haw Par Villa,activity,262 Pasir Panjang Rd,1.2832,103.7830,1,3.8
-Artscience Museum,activity,6 Bayfront Ave,1.2863,103.8593,3,4.4
-Escape Theme Park,activity,1 Pasir Ris Close,1.3807,103.9479,3,4.1
-East Coast Park,activity,East Coast Service Rd,1.3000,103.9120,1,4.3
+place_id,name,category,primary_type,address,lat,lng,price_level,rating,rating_count,neighbourhood
+ChIJS5IVbvwa2jERDxPwmWkRghI,McDonald's West Coast Park,food,fast_food_restaurant,"71 W Coast Hwy, Singapore 126844",1.2975443,103.76335840000002,1,4.3,5766,NUS
+ChIJk7fc3E8a2jERzWIYtvj8LCE,Timbre+ One North,food,restaurant,"73A Ayer Rajah Cres., JTC LaunchPad @ one-north, Singapore 139957",1.2973236,103.7874586,2,4.2,6394,NUS
+ChIJncjPBA8U2jER5ol9uaCD7KY,ORTO,food,sports_activity_location,"27 W Coast Hwy, Singapore 117867",1.2831852,103.7805348,2,4.2,5720,NUS
+ChIJGSYcGPwa2jER4SlFZ31tdxQ,Fong Seng Nasi Lemak,food,restaurant,"22 Clementi Rd, Singapore 129751",1.2929977,103.7687169,2,4.1,1314,NUS
+ChIJQwH2mvsZ2jER3xDN9Afd33M,A Hot Hideout @ Kent Ridge (NUS),food,chinese_restaurant,"27 Prince George's Pk, #02-01 National University of Singapore, Singapore 118425",1.2905102,103.78133679999999,2,4.9,3163,NUS
+ChIJyw0LpIAb2jERnVuLXrQ9eVg,McDonald's Metropolis,food,fast_food_restaurant,"9 North Buona Vista Drive #01-08 Tower 1 The Metropolis, Singapore 138588",1.3061511,103.79108560000002,1,4.2,1999,NUS
+ChIJSfpe5sYb2jERD2sqNh-WJHc,One Fattened Calf Burgers,food,hamburger_restaurant,"1 Fusionopolis Pl, #01-31 Galaxis, Singapore 138522",1.2999314,103.78805969999999,2,4.6,1320,NUS
+ChIJ_xfz16Ib2jERwahhZCQySeY,Legendary Classics by Legendary Hong Kong,food,chinese_restaurant,"10A Rochester Park, Rochester Dr, Singapore 139258",1.3065846,103.7871804,2,4.7,3611,NUS
+ChIJEYbG7_Ea2jERzPiMfCb8yVY,Island Penang Kitchen,food,malaysian_restaurant,"721 Clementi West Street 2, #01-126, Singapore 120721",1.3025584,103.76447399999999,2,4.3,1516,NUS
+ChIJp85ZgUka2jERsvwRR9FvUwA,Pietrasanta The Italian Restaurant,food,italian_restaurant,"1 Fusionopolis Wy, #01-08 Connexis, Singapore 138632",1.2986242,103.7879068,2,4.5,1489,NUS
+ChIJUXAAUEUa2jERTkJUfdD1DXM,Hoodadak Korean Restaurant 후다닥 한국 음식점,food,korean_restaurant,"1 Fusionopolis Pl, #01-10 Galaxis, Singapore 138522",1.2995284999999999,103.78820329999999,2,4.1,717,NUS
+ChIJx0dfzAsZ2jERTBmlVt5elE4,Cafe Melba at Mediapolis,food,cafe,"1 Stars Ave, #03-01 Mediacorp Campus, Singapore 138507",1.295968,103.7925581,2,4.1,989,NUS
+ChIJ_64M7Vkb2jERzmTopa_a7Ds,T·E MOOKATA BUFFET,food,buffet_restaurant,"710 Clementi West Street 2, #01-269, Singapore 120710",1.3066929,103.7617698,2,3.9,63,NUS
+ChIJMyzw5gYb2jERAVsDQLe7XYY,Les Bouchons Steakhouse Rochester,food,french_restaurant,"10 Rochester Park, Rochester Commons, Singapore 139221",1.3062487000000003,103.7876014,2,4.6,1838,NUS
+ChIJt5RMQrYb2jERMLrXx2-QRrw,Swensen's Unlimited @ Geneo,food,buffet_restaurant,"1 Science Park Dr, #01-06, Singapore 118221",1.2918703,103.7856425,2,4.8,3362,NUS
+ChIJB7uq5rAb2jERS4m86aRFEag,Great Nanyang Heritage Cafe 大南洋 (Geneo),food,restaurant,"1B Science Park Dr, B1-32, GENEO 119315",1.2923078,103.78521359999999,2,4.5,1354,NUS
+ChIJm-db9Lwb2jERxTs5F3lzr4I,Guzman y Gomez - Star Vista,food,mexican_restaurant,"1 Vista Exchange Grn, #01-32 The Star Vista, Singapore 138617",1.306423,103.7885026,2,4.7,5762,NUS
+ChIJpbpdPPwa2jER3qzoPX12xE8,Al Amaan Restaurant,food,indian_restaurant,"12 Clementi Rd, Singapore 129742",1.2927526,103.7684987,1,4.2,1569,NUS
+ChIJiykHSUIa2jERQ3nZ8_NBW_8,Peach Garden @ The Metropolis,food,chinese_restaurant,"9 North Buona Vista Drive #02-02, Tower 1 The Metropolis, Singapore 138588",1.3060038,103.7912667,2,4.1,1877,NUS
+ChIJRYLogvIb2jERqRCDqYyxSxw,JB101 Seafood @ Science Park,food,seafood_restaurant,"45 Science Park Rd, #01-03/04, Singapore 117407",1.2875109,103.782581,2,4.3,946,NUS
+ChIJUy7z81ka2jERmJSB-fIqFXQ,Bread Yard,food,cafe,"1 Fusionopolis Pl, #01 - 23 / 24 Galaxis, Singapore 138522",1.2999588,103.78774709999999,2,4.1,1068,NUS
+ChIJTyS910Ia2jERCTho_ldH97E,Starbucks Rochester Park,food,cafe,"37 Rochester Dr, Singapore 138640",1.305518,103.7877582,2,4.2,895,NUS
+ChIJ3SWtPfUa2jERQaXuDgcJ4uc,Starbucks,food,cafe,"8 College Ave W, B1-01, Singapore 138608",1.3055043,103.773187,2,4.1,208,NUS
+ChIJs6BkGw8b2jERIa2qQbYp5yQ,Runes,food,cafe,"28 Biopolis Rd, Level 1 Lobby B Wilmar International Ltd, Singapore 138568",1.3008056,103.7914302,2,4.4,200,NUS
+ChIJGXNq1Kob2jERpoF9dMeV03g,Shell,food,gas_station,"328 Pasir Panjang Rd, Singapore 118654",1.288897,103.777832,2,3.8,82,NUS
+ChIJ-RBMrsUZ2jER_mDRCpfHAy4,PÖONSTI / Old Hen Coffee (NUS),food,coffee_shop,"11 Kent Ridge Dr, #01-02, Singapore 119244",1.2931827999999999,103.7736341,2,4.5,757,NUS
+ChIJR-VQ5AAb2jERNuhpj2Zel0M,CHAGEE NUS,food,tea_store,"31 Lower Kent Ridge Rd, #01-09, Singapore 119078",1.2986284,103.77493609999999,2,5.0,493,NUS
+ChIJtazRWUQa2jER_pD2DqGY0WI,Jimmy Monkey Cafe,food,cafe,"#01-51 One-North Residences, 9 One-north Gateway, Singapore 138643",1.3018774,103.79025039999999,2,4.3,785,NUS
+ChIJhY0JzqIb2jERqFsfxj2ZcLA,Dutch Colony Coffee Co.,food,cafe,"1 Fusionopolis Wy, #01-01, Singapore 138632",1.2988941,103.78726239999999,2,4.4,615,NUS
+ChIJg2RzREUa2jERTWEw-CdqYP0,Starbucks - Fusionopolis,food,cafe,"1 Fusionopolis Wy, #01-07 / #02-14, Singapore 138632",1.2988321,103.78744309999999,2,3.9,214,NUS
+ChIJv2EWqNob2jERg7PQYBYe1Lk,Vicbakery,food,cake_shop,"8 Slim Barracks Rise, #01-02 One-North Eden, Singapore 138492",1.3029856,103.7888862,2,4.8,102,NUS
+ChIJXe6inXQb2jERNWU6KK3EYf0,Asian Twist by 365 Food,food,cafe,"2 Science Park Dr, #01-26/27/28 Ascent, Singapore 118222",1.2916256,103.78449309999999,2,4.8,343,NUS
+ChIJXaXHWkUa2jERRklhDYPq0_4,Ya Kun Kaya Toast (Fusionopolis),food,cafe,"1 Fusionopolis Wy, #B1-15, Singapore 138632",1.2993042,103.7876758,1,3.6,306,NUS
+ChIJjxK_WVEa2jERmd7HrxoxKh8,The Coffee Bean & Tea Leaf,food,cafe,"5 Lower Kent Ridge Rd, #01-10 Main Building, Singapore 119074",1.2945847,103.78414939999999,2,3.6,189,NUS
+ChIJYZ3qqZ8b2jER456-75ycqgw,Get Some @ Clementi | Singapore's Best Craft Beers,food,restaurant,"727 Clementi West Street 2, #01-282, Singapore 120727",1.3044908,103.7636022,2,4.8,244,NUS
+ChIJ63t2Lagb2jERGYdmePXWv0w,Burnt Cones Gelato (One North),food,ice_cream_shop,"8 Slim Barracks Rise, #01-03, Singapore 138492",1.3030526999999998,103.7888182,2,5.0,554,NUS
+ChIJr145y2Ab2jERhDyPC-k6riU,Burnt Cones Gelato (NUS MD11),food,ice_cream_shop,"10 Medical Drive, MD11, #01-40 Yong Loo Lin School of Medicine, Singapore 117597",1.2959140999999998,103.7818202,2,4.9,2823,NUS
+ChIJEecHSEIa2jER1YsRBNeHLyY,Starbucks - Metropolis,food,cafe,"9 N Buona Vista Dr, #01-13/14 The Metropolis, Singapore 138588",1.3058011,103.79130239999999,2,4.3,303,NUS
+ChIJP7ArF0kb2jERD2DXmftVe5A,luckin coffee - Galaxis,food,coffee_shop,"1 Fusionopolis Pl, #01-16, Singapore 138522",1.2998026999999999,103.7879122,2,3.5,29,NUS
+ChIJlU-o0lAa2jERsCtOzkWINhA,Frontier Canteen,food,food_court,"12 Science Drive 2, Singapore 117549",1.2964250000000002,103.78036379999999,2,4.3,1068,NUS
+ChIJb1cyxvka2jERsrFqNCJSWOY,Techno Edge,food,food_court,"2 Engineering Drive 4, Singapore 117584",1.2978524999999999,103.77165319999999,2,4.3,519,NUS
+ChIJVVVVJfka2jERZRl7AeJV__s,The Deck,food,food_court,"11 Computing Dr, Singapore 117416",1.2944284,103.77256229999999,2,4.2,801,NUS
+ChIJl9xwzPUa2jER6-9rZ50tOXs,Flavours @ UTown,food,food_court,"2 College Ave W, #02-01, Singapore 138607",1.3044034000000002,103.77298379999999,2,4.0,482,NUS
+ChIJsfvX3fUa2jERoMQytgleoOA,Fine Food,food,food_court,"1 Create Wy, #01-04, Singapore 138602",1.3040351,103.7735416,2,3.9,328,NUS
+ChIJv95Pj1kb2jERKGcbO40vYF0,The Terrace,food,food_court,"Queenstown, Singapore",1.2943860000000003,103.7743402,2,2.3,12,NUS
+ChIJxXKPnO8b2jER2g18GHhh-Tk,Kopitiam,food,food_court,"5 Lower Kent Ridge Rd, #01-06 NUH Main Building, Singapore 119074",1.2949693,103.78253009999999,1,3.4,384,NUS
+ChIJBRjm908a2jERGNlC1Q6yl_s,Koufu (Fusionopolis),food,food_court,"1 Fusionopolis Wy, B2-02, Singapore 138632",1.2989173999999999,103.78764869999999,1,3.8,564,NUS
+ChIJWQ8WOgAb2jER807hEn4gYbs,Hawkerlab,food,food_court,"7 Science Park Dr Geneo, 7 Science Park Dr, #01-25 Singapore Science Park 1, Singapore 119316",1.2916280999999998,103.7870664,2,4.0,29,NUS
+ChIJBfpIMFIa2jER0kicxx7NJvk,The Dining Avenue,food,food_court,"1 Lower Kent Ridge Rd, #05-01, Singapore 117599",1.2935219999999998,103.7848195,2,3.7,203,NUS
+ChIJ6b8PEPga2jEROvB27FERork,Central Square Canteen,food,food_court,"31 Lower Kent Ridge Rd, Singapore 119078",1.2984346999999998,103.7752005,2,3.9,81,NUS
+ChIJXRoJwoUZ2jERStGn9ZKRR8k,Oppa! Fried Chicken,food,korean_restaurant,"73A Ayer Rajah Cres., #01-37 Timbre+ One North, Singapore 139957",1.297437,103.7875057,2,4.5,103,NUS
+ChIJM5o_GAAb2jER1vQNXmoGdVA,Makan Street 福满街,food,food_court,"1 Science Park Dr, B1-01 Geneo, Singapore 118221",1.2922109,103.7858395,2,3.7,32,NUS
+ChIJ3aZPumEa2jERMCfubBhZaaU,Koufu (Singapore Polytechnic Food Court 4),food,food_court,"500 Dover Rd, Singapore 139651",1.3112289,103.77719950000001,2,4.1,400,NUS
+ChIJMZpVzkgb2jER9Q9XfcbZYEU,Food Court 3 (Foodgle),food,food_court,"500 Dover Rd, Singapore 139651",1.3088754,103.7783074,2,4.1,159,NUS
+ChIJkTga80Ub2jERswFe-PJ5jas,Koufu (SP Food Court 1),food,food_court,"500 Dover Rd, Singapore 139651",1.3077199,103.7813666,2,4.3,90,NUS
+ChIJhZMiT6wb2jER5cO55GRxCLo,Best Bites,food,food_court,"73 Science Park Dr, #B1-01 Singapore Science Park 1, Singapore 118254",1.2905311,103.7890149,2,4.0,177,NUS
+ChIJ6Sr3OgAb2jERFNILwBR8Kxs,Foodini,food,food_court,"30 Biopolis St, #01-01 Matrix, Singapore 138671",1.3033900999999999,103.7925581,2,4.4,105,NUS
+ChIJBfv6PmAa2jERNwMSBr61hoE,"SP - Foodcourt 5, Swimming Pool and Gym",food,restaurant,"500 Dover Rd, Singapore 139651",1.3094020000000002,103.777034,2,4.2,154,NUS
+ChIJGUnuuU0b2jERketVgnweMY4,Wheathead,food,bakery,"8 Slim Barracks Rise, #01-01, Singapore 138492",1.3029441,103.7889438,2,4.4,173,NUS
+ChIJ30rumbcb2jERXAG34V6Jr0E,Brash Boys Coffee,food,cafe,"8 Biomedical Grv, #01-12 Neuros, Singapore 138665",1.3023987,103.7931831,2,4.9,144,NUS
+ChIJV5Z8vb0j2jERXLDUUALWTQQ,The Bagel Bunch,food,bagel_shop,"9 N Buona Vista Dr, Tower 1, #01-01 The Metropolis, Singapore 138588",1.3064596,103.79140319999999,2,4.7,368,NUS
+ChIJd7L66kIa2jERXBvH7oHTlgQ,Cedele - The Star Vista,food,bakery,"1 Vista Exchange Grn, #01-18/19 The Star Vista, Singapore 138617",1.3068419999999998,103.78844,2,3.5,544,NUS
+ChIJp0JVlEIa2jERJq354ggTRX4,"Awfully Chocolate Star Vista (CAFE) – Cake Shop, Bakery & Chocolate Cakes",food,dessert_shop,"1 Vista Exchange Grn, #02-18 The Star Vista, Singapore 138617",1.3069569,103.78845559999999,2,4.4,1004,NUS
+ChIJich_yQob2jER9cVypvPlJS8,Whiskdom Cafe - Galaxis,food,cafe,"1 Fusionopolis Pl, #01-18/19 Galaxis, Singapore 138522",1.2998432,103.7877714,2,4.0,47,NUS
+ChIJ9_fOQTkb2jERU__uZ8PHxSw,Cedele - The Metropolis,food,cafe,"9 North Buona Vista Drive #01-10, The Metropolis, Tower 1, Singapore 138588",1.3060254,103.7912901,2,3.9,92,NUS
+ChIJfUiqMakb2jERJPhjkxBMjaY,Lemuel Chocolate Bean-To-Bar Pte Ltd,food,chocolate_shop,"1 Vista Exchange Grn, #01-04/05 The Star Vista, Singapore 138617",1.3068072,103.7883997,2,4.3,353,NUS
+ChIJ_We-_2cb2jER1aaXrfC3Pxw,AJ Delights (Fusionopolis),food,bakery,"1 Fusionopolis Wy, B1-22 Connexis Tower, Singapore 138632",1.2998458,103.7877637,2,4.7,106,NUS
+ChIJk9SJr50b2jERNtg-loXlTS0,PAWA BAGEL+ BAKERY(@the Star Vista),food,bagel_shop,"1 Vista Exchange Grn, #02-27B/27C, Singapore 138617",1.3068058999999999,103.78848239999999,2,4.5,108,NUS
+ChIJhw9v3fEa2jERYHyDHbioscs,Creative Bakery,food,bakery,"721 Clementi West Street 2, Singapore 120721",1.3029165999999999,103.76432059999999,2,4.4,57,NUS
+ChIJ2259624b2jERb0TAacKCsxw,KINKY KETO,food,pastry_shop,"8 Biomedical Grv, #01-15 Neuros, Singapore 138665",1.3025063,103.79326809999999,2,4.9,216,NUS
+ChIJp0JVlEIa2jERzgx3hgelytg,Four Leaves,food,bakery,"1 Vista Exchange Grn, #B1-33 The Star Vista, Singapore 138617",1.3068459000000001,103.78798850000001,1,3.7,36,NUS
+ChIJn9zvDZkb2jERYY3grfPCuqM,Polar Puffs & Cakes | National University Hospital,food,bakery,"1 Lower Kent Ridge Rd, #01-03/04/22 One @ kentridge, Singapore 119082",1.2934297,103.78453499999999,2,4.2,21,NUS
+ChIJk5wHDvob2jER9SRLilpc8VI,BreadTalk,food,bakery,"1B Science Park Dr, B2-37/38, Geneo 119315",1.2922816,103.78521289999999,2,2.2,10,NUS
+ChIJubCnrC0b2jERwsZ3ydgzJXg,Juz Bread,food,bakery,"28 Dover Cres, #01-95 Dover Gardens, Singapore 130028",1.3045048,103.7817857,2,3.2,33,NUS
+ChIJ7egrfeUb2jERtIS0ZbYdhjI,Rive Gauche Star Vista,food,pastry_shop,"1 Vista Exchange Grn, #B1-37C The Star Vista, Singapore 138617",1.3068072,103.7883997,2,4.1,40,NUS
+ChIJHwZEaooQ2jERcnbZtgFqvNo,Oishii Bakery,food,bakery,"154 W Coast Rd, Singapore 127371",1.3037395,103.76599499999999,2,3.2,123,NUS
+ChIJBWBGLlIa2jERfLJh5yk_fhI,Bakery Cuisine & EatRich,food,bakery,"1 Lower Kent Ridge Rd, #01-23/24/26, Singapore 119082",1.2937242,103.78468289999999,2,2.0,82,NUS
+ChIJnXZ5BUMa2jERNg_FrwFyWAU,CALI Rochester Park – Pet-Friendly Restaurant & Bar,food,restaurant,"31 Rochester Dr, #01-01/02, Singapore 138637",1.3049669,103.7888696,2,4.6,2855,NUS
+ChIJn_-VG6Ub2jEReJQnN3fCGow,Picotin Brewhaus - Rochester,food,brewpub,"35 Rochester Dr, Singapore 138639",1.3058134,103.78777199999999,2,4.0,1043,NUS
+ChIJ_0dnTtwb2jERK4mQ3ngnayQ,Lazy Lizard - Pasir Panjang,food,western_restaurant,"28 Clementi Rd, Singapore 129754",1.2930834,103.76873739999999,2,4.8,1779,NUS
+ChIJj9enwUIa2jERK8wEjSmGA9A,Teo Heng KTV Studio (The Star Vista),food,bar,"1 Vista Exchange Grn, #01-16 The Star Vista, Singapore 138617",1.3068313,103.78803529999999,1,4.2,852,NUS
+ChIJkdFHZ_Eb2jERktp5ceeQf4I,Al Capone’s,food,bar,"35 Rochester Dr, #01-05 Rochester Mall, Singapore 138639",1.3052622,103.78860519999999,2,4.3,165,NUS
+ChIJV3P-dqsb2jERcA1t9E1fPps,UDON DON BAR,food,japanese_restaurant,"1 Create Way #01-12 Town Plaza, Singapore 138602",1.3037527,103.7743572,2,4.1,330,NUS
+ChIJgXWSm6Eb2jERcgJoTUf259E,PEN & INC One-North Restaurant & Bar,food,restaurant,"11 Slim Barracks Rise, #03-01, Singapore 138664",1.3037725000000002,103.78967089999999,2,4.8,559,NUS
+ChIJJVd0jNEb2jER5E621hKhmoA,Volta Bistro,food,bistro,"27 W Coast Hwy, #01-02/03, Singapore 117867",1.2829968999999999,103.7801929,2,4.8,111,NUS
+ChIJzed3sdkb2jERczmgYDLhUE8,5 Senses Bistro The Star Vista,food,bistro,"1 Vista Exchange Grn, #02-21 The Star Vista, Singapore 138617",1.3067488,103.78862529999999,2,4.4,574,NUS
+ChIJhyK1FAkb2jEResQ06oGfNwo,MahaCo Dosa Bar,food,taco_restaurant,"1 Fusionopolis Link, Nexus, #01-04, Singapore 138542",1.2989416999999999,103.7898453,2,4.6,146,NUS
+ChIJZ4JqKmgb2jEROuOzh5z42no,LE WHITE BAR,food,bar,"27 W Coast Hwy, #01-05, Singapore 117867",1.2831852,103.7805348,2,4.8,61,NUS
+ChIJs04z17wX2jERl7j4BdYOe2Y,JINHO shokudo & BAR.,food,japanese_restaurant,"1 Fusionopolis Pl, #01-14 Galaxis, Singapore 138522",1.2995189,103.7880752,2,4.2,103,NUS
+ChIJe5jFSxob2jERQIHIQ7Vz1fk,"Back Street Alley - Restaurant & Bar | Drinks, Bar Bites & Fusion Bowls | One North",food,bar,"31 Biopolis Wy, #01-06, Singapore 138669",1.3043022,103.7923788,2,4.4,56,NUS
+ChIJbcTytKYb2jERx6WRXuXMRaM,Ob.bar,food,bar,"9 N Buona Vista Dr, #01-04 The Metropolis, Singapore 138588",1.3065065999999999,103.79130060000001,2,4.8,93,NUS
+ChIJsUjwjBsb2jER_852PyCjcRY,Darts Legend @ One North,food,bar,"20 Ayer Rajah Cres., Singapore 139964",1.2954188,103.79012259999999,2,4.8,6,NUS
+ChIJ5x6CCWsa2jERnmDss3H8ahw,"Pizza Express | The Star Vista (Buona Vista, Holland)",food,pizza_restaurant,"1 Vista Exchange Grn, #01-44/45 Level 1 The Star Vista, Singapore 138617",1.3068072,103.7883997,2,4.5,1068,NUS
+ChIJQ8uk4vwa2jERqMrT6OFBMuw,West Coast Park,activity,park,"W Coast Ferry Rd, Singapore 126978",1.2913603,103.7666534,2,4.4,7028,NUS
+ChIJ9ak4I6wb2jERO6x4oAUh_-g,Haw Par Villa,activity,amusement_center,"262 Pasir Panjang Rd, Singapore 118628",1.2841525999999999,103.781892,2,4.2,6804,NUS
+ChIJlcijSfYa2jERGZ3CD7lpz_E,"Lee Kong Chian Natural History Museum, Singapore",activity,museum,"2 Conservatory Dr, #01-03, Singapore 117377",1.3014156,103.7736549,2,4.6,2658,NUS
+ChIJgxbEEOMa2jER__xGYl-5BlI,West Coast Pier,activity,ferry_service,"60 W Coast Ferry Rd, Singapore 126979",1.2925472,103.76220029999999,2,4.2,1025,NUS
+ChIJcwAAUPoa2jERiv_0ph5iKlg,NUS Museum,activity,museum,"50 Kent Ridge Cres, Singapore 119279",1.3014271,103.7726739,2,4.6,633,NUS
+ChIJH3Xfb0Qa2jEROsA0L3hnct4,one-north Park: Biopolis,activity,park,"Slim Barracks Rise, Singapore",1.3017102999999999,103.79085859999999,2,4.4,104,NUS
+ChIJq5tDrLMb2jER-0ZArfKHhGI,Kent Ridge Park Pond,activity,park,"Science Park Dr, Singapore",1.2867544,103.7899279,2,4.3,173,NUS
+ChIJsWfbPecb2jERr7753Z09d58,Portsdown Swamp,activity,tourist_attraction,"5 Weyhill Cl, Singapore 138885",1.2994815,103.7921786,2,4.3,3,NUS
+ChIJg4SXyEUb2jER9dBCIsVpziI,Grogu Fountain,activity,tourist_attraction,"1 Fusionopolis Vw, #01-01 Sandcrawler Building, Singapore 138577",1.2998378,103.7892136,2,5.0,1,NUS
+ChIJY0gTUQAb2jERm_hPHjnjy60,Mural @ 727,activity,tourist_attraction,"727 Clementi West Street 2, Singapore 120727",1.3040847,103.76377,2,5.0,1,NUS
+ChIJST7JMQAb2jERC1vylUgDlwk,Link Bridge West Coast Plaza,activity,tourist_attraction,"W Coast Rd, Singapore 127371",1.30349,103.7650323,2,3.0,2,NUS
+ChIJ3xSV5_ob2jERCnZyINDAtN4,Hell's Museum,activity,museum,"262 Pasir Panjang Rd, Singapore 118628",1.2841013,103.7816422,2,4.8,1059,NUS
+ChIJ30x-Amob2jERfPeMKV0iKk0,Science Demonstration Laboratory,activity,museum,"6 Science Drive 2, Level 2, Singapore 117546",1.2967343,103.78029439999999,2,4.2,5,NUS
+ChIJcQ2md-Yb2jER4YRQp4nh168,Immortal Dragons Gallery & Museum,activity,museum,"3 Biopolis Dr, #01-15, Singapore 138623",1.3016653999999999,103.79334899999999,2,5.0,6,NUS
+ChIJzwpAuvUa2jERKLsMivdQL8Q,Town Green,activity,park,"2 College Ave W, Singapore 138607",1.3049389999999998,103.773154,2,4.4,179,NUS
+ChIJn2iaj3Eb2jERagedsb13qXc,West Coast Park - BBQ PITs (1-9),activity,barbecue_area,"51 W Coast Hwy, Singapore",1.2923584,103.76546549999999,2,4.4,45,NUS
+ChIJHSPvpfEa2jERhXuDEq88T7w,Clementi Woods Park,activity,park,"West Coast Road, 93A Clementi Rd, Singapore 129781",1.2996976999999998,103.7676784,2,4.3,196,NUS
+ChIJ_XPhU-Ua2jERP6jquJn_N60,West Coast Park Car Park 3,activity,transportation_service,"70 W Coast Ave, Singapore",1.2984086,103.7633839,2,4.4,369,NUS
+ChIJlYRVeQAb2jERUchgQ-LokSw,West Coast Park Dog Run,activity,dog_park,Singapore,1.2874250999999999,103.7747426,2,4.5,272,NUS
+ChIJqbQNixkb2jERAfb4XyGHDyo,one-north Park: Fusionopolis North,activity,park,"Central Exchange Grn, Singapore",1.3008587999999999,103.7903611,2,4.3,31,NUS
+ChIJTQhdYgAb2jERXqZI1dRzlrc,Unmanned Aircraft Flying Area @ Dover Meadow,activity,park,"1300 Dover Rd, Singapore 139663",1.3060945,103.7785794,2,3.6,18,NUS
+ChIJ6_vhTZob2jER5LZB8owCSbk,Science Park 2 Pond Pavilion,activity,park,"21 Science Park Rd, Singapore 117628",1.288367,103.78083790000001,2,5.0,19,NUS
+ChIJuWveYfYb2jERWlCMY9Uy1GQ,one-north Park: Mediapolis,activity,park,Singapore,1.2949282,103.7927467,2,4.8,15,NUS
+ChIJkeEUBAAb2jERqKB9bfz7PHQ,WCP Entrance Plaza 2,activity,park,"Queenstown, Singapore",1.2988731999999998,103.7628513,2,4.5,4,NUS
+ChIJB1VDQgAb2jERzSpWxlf4JTY,West Coast Park Promenade,activity,park,Singapore,1.2971761,103.76046079999999,2,4.9,8,NUS
+ChIJW-j2piIb2jERxU77Hy8zrrs,Dover Forest West,activity,national_park,"1 Technology Dr, Singapore",1.3141916,103.77563409999999,2,4.3,43,NUS
+ChIJ46XHZU8a2jERLxNPweiD2II,one-north Park: Fusionopolis South,activity,park,"Central Exchange Grn, Singapore",1.2998858,103.7898889,2,4.3,44,NUS
+ChIJE_qgnRQb2jERt9j9TqZv5bM,Dover Meadow,activity,park,"1300 Dover Rd, Singapore 139663",1.3055668999999999,103.778155,2,4.6,17,NUS
+ChIJQ5JhDAAb2jERXwOnChCT7hM,West Coast Park Pond,activity,park,"Queenstown, Singapore",1.2889089999999999,103.7714709,2,5.0,5,NUS
+ChIJtzgr2TYb2jERcIn-GyEaYC0,Art Village Gallery & Studio (West Coast Plaza),activity,educational_institution,"154 West Coast Road, #01-20/K5 West Coast Plaza, Singapore 127371",1.3036983,103.76612829999999,2,5.0,16,NUS
+ChIJpyfRpzob2jER9D20nTaJhyU,Art Almanac,activity,art_gallery,"9 One-north Gateway 01/50 One North Residences, 9 One-North Gtwy, #01-45 One North Residences, Singapore 138643",1.3019828,103.7902374,2,4.5,10,NUS
+ChIJ91hVlEIa2jERm_cxYZ2WKow,The Star Vista,activity,shopping_mall,"1 Vista Exchange Grn, Singapore 138617",1.3068072,103.7883997,2,4.3,9012,NUS
+ChIJdxS7gPEa2jER1iMe8Ai90Ts,West Coast Plaza,activity,shopping_mall,"154 W Coast Rd, Singapore 127371",1.303702,103.7659312,2,4.0,3728,NUS
+ChIJEaBAGEMa2jERttBFiHpl_UE,Rochester mall,activity,shopping_mall,"35 Rochester Dr, Singapore 138639",1.3055784,103.7882008,2,3.9,1273,NUS
+ChIJj4Iq5U0b2jERa3haKDQc7K8,Cintech IV,activity,business_center,"79 Science Park Dr, Singapore 118264",1.2895455999999998,103.790484,2,4.8,9,NUS
+ChIJ27uORH8b2jER5QyoVQN2wd0,Fusionpolis connexis building,activity,shopping_mall,"1 Fusionopolis Wy, B1-09/10, Singapore 138632",1.2989175000000002,103.7876488,2,4.2,15,NUS
+ChIJuUXzGrMb2jERGj-8yzwcIuQ,The Oasis,activity,shopping_mall,"87 Science Park Dr, Singapore 118260",1.2878135,103.7904914,2,4.0,260,NUS
+ChIJ8Ws24PEa2jER3oN_NzlUGDw,Blk 720 Clementi West St 2,activity,shopping_mall,"720 Clementi West Street 2, #01-144 720, Singapore 120720",1.3024152999999998,103.7637226,2,3.9,17,NUS
+ChIJWRqhGwAb2jER7EegPEzY3Hc,The Star Vista Carpark West Entrance,activity,shopping_mall,"Queenstown, Singapore",1.3069266,103.7877905,2,4.5,2,NUS
+ChIJyZR0zqsb2jERMHnnhwh5qOs,Fruit Wholesale Pasir Panjang,activity,shopping_mall,"12 Pasir Panjang, Wholesale Centre, Singapore 110012",1.286429,103.7774781,2,4.5,2,NUS
+ChIJfX5QOPwa2jERkNEpB0VrbMo,Jk Village,activity,shopping_mall,"Clementi Rd, Singapore 129741",1.2924505,103.76840539999999,2,5.0,8,NUS
+ChIJBfpIMFIa2jERzmRp_Z7v0P4,One@KentRidge,activity,shopping_mall,"1 Lower Kent Ridge Rd, Singapore 119082",1.2935474,103.7846124,2,5.0,2,NUS
