@@ -9,7 +9,6 @@ API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 
 BASE_URL = "https://places.googleapis.com/v1/places:searchNearby"
 
-# Fields to request — Basic tier only (cheapest)
 FIELD_MASK = ",".join([
     "places.id",
     "places.displayName",
@@ -24,14 +23,12 @@ FIELD_MASK = ",".join([
     "places.regularOpeningHours",
 ])
 
-# Singapore neighbourhoods to search
-# Each entry: (label, lat, lng, radius_metres)
+# 1 search area for now to get a static dataset to work out filtering logic to reduce api calls
 SEARCH_AREAS = [
     ("NUS", 1.2966, 103.7764, 2000),
 ]
 
-# Place types to search per area
-# Split into food and activity so we get balanced coverage
+# search fields for food/activities subtypes to maximize results since google api only returns max 20 results
 FOOD_TYPES = [
     ["restaurant"],
     ["cafe"],
@@ -56,9 +53,10 @@ def search_nearby(lat, lng, radius, place_types, label):
         "X-Goog-Api-Key": API_KEY,
         "X-Goog-FieldMask": FIELD_MASK,
     }
+    
     body = {
         "includedTypes": place_types,
-        "maxResultCount": 20,   # max allowed per request
+        "maxResultCount": 20,
         "locationRestriction": {
             "circle": {
                 "center": {"latitude": lat, "longitude": lng},
@@ -66,16 +64,16 @@ def search_nearby(lat, lng, radius, place_types, label):
             }
         },
     }
+    
     resp = requests.post(BASE_URL, headers=headers, json=body)
     if resp.status_code != 200:
-        print(f"  ERROR {resp.status_code}: {resp.text}")
+        print(f"ERROR {resp.status_code}: {resp.text}")
         return []
     places = resp.json().get("places", [])
-    print(f"  {label}: got {len(places)} results")
+    print(f"{label}: got {len(places)} results")
     return places
 
 def parse_price_level(raw):
-    # API returns strings like "PRICE_LEVEL_MODERATE"
     mapping = {
         "PRICE_LEVEL_FREE":         1,
         "PRICE_LEVEL_INEXPENSIVE":  1,
@@ -83,20 +81,21 @@ def parse_price_level(raw):
         "PRICE_LEVEL_EXPENSIVE":    3,
         "PRICE_LEVEL_VERY_EXPENSIVE": 4,
     }
-    return mapping.get(raw, 2)  # default to moderate if unknown
+    return mapping.get(raw, 2)
 
 def main():
     all_rows = []
-    seen_ids = set()  # avoid duplicates across overlapping areas
+    # avoid duplicates
+    seen_ids = set()
 
     for (label, lat, lng, radius) in SEARCH_AREAS:
         print(f"\nSearching: {label}")
 
-        # Food
-        # Food — one type at a time
+        # food search
         for type_list in FOOD_TYPES:
             for place in search_nearby(lat, lng, radius, type_list, f"{label} {type_list[0]}"):
                 pid = place.get("id")
+                # ignore places already seen/closed permanently
                 if pid in seen_ids or place.get("businessStatus") == "CLOSED_PERMANENTLY":
                     continue
                 seen_ids.add(pid)
@@ -115,7 +114,7 @@ def main():
                 })
             time.sleep(0.3)
 
-        # Activities — one type at a time
+        # activities search
         for type_list in ACTIVITY_TYPES:
             for place in search_nearby(lat, lng, radius, type_list, f"{label} {type_list[0]}"):
                 pid = place.get("id")
@@ -137,14 +136,13 @@ def main():
                 })
             time.sleep(0.3)
 
-
+    # remove irrelevant entries
     df = pd.DataFrame(all_rows)
-    df = df[df["name"] != ""]          # drop empty names
-    df = df[df["rating"] > 0]          # drop unrated venues
+    df = df[df["name"] != ""]          
+    df = df[df["rating"] > 0]   
     df = df.drop_duplicates("place_id")
 
     df.to_csv("venues.csv", index=False)
-    print(f"\nDone. {len(df)} venues saved to venues.csv")
     print(df["category"].value_counts())
     print(df["neighbourhood"].value_counts())
 
