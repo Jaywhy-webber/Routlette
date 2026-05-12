@@ -7,18 +7,17 @@ from Routlette.backend.generate_dataset import API_KEY
 analyzer = SentimentIntensityAnalyzer()
 
 def filter_and_score_gems(api_key, input_csv='venues.csv', output_csv='final_hidden_gems.csv'):
-    # 1. Load Data
     df = pd.read_csv(input_csv)
 
-    # 2. Pre-Filtering (Remove unwanted types immediately)
+    # removing irrelevant/unwanted subtypes immediately
     unwanted = ['shopping_mall', 'barbecue_area', 'educational_institution']
     df = df[~df['primary_type'].isin(unwanted)]
 
-    # 3. Basic Quality Filtering (Pro/Basic Tier data)
     df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce')
     df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
     df['price_level'] = pd.to_numeric(df['price_level'], errors='coerce')
 
+    # static filtering for now, looking for 'hidden gems' but will eventually be dynamic filtering based on user input
     mask = (
             (df['price_level'] <= 2) &
             (df['rating'] >= 4.0) &
@@ -28,18 +27,20 @@ def filter_and_score_gems(api_key, input_csv='venues.csv', output_csv='final_hid
     filtered_df = df[mask].copy()
 
     if filtered_df.empty:
-        print("No matches found in basic filtering.")
+        print("No matches found")
         return None
 
-    # 4. Calculate Mystery & Gem Scores (Initial Ranking)
+    # weighted scoring based on 1. rating count 2. rating
+    # before sentiment analysis on google reviews to reduce token usage
     count_min, count_max = 10, 300
     filtered_df['mystery_score'] = 1 - ((filtered_df['rating_count'] - count_min) / (count_max - count_min))
     filtered_df['rating_perf_score'] = (filtered_df['rating'] - 4.0) / (5.0 - 4.0)
     filtered_df['gem_score'] = (filtered_df['rating_perf_score'] * 0.6) + (filtered_df['mystery_score'] * 0.4)
 
-    # 5. FULL VIBE BUCKET MAPPING
+    # mapping of each subtype to a different 'vibe' i.e. quick stop, full meal, bars, outdoors, culture etc
+    # so we can get the best option from each vibe instead of lumping distinct vibes together and only getting 1 final result
     VIBE_MAPPING = {
-        # --- FUEL STOP (Quick, Coffee, Sweets) ---
+        # quick meal (cafe, coffee, pastries etc)
         'acai_shop': 'Fuel Stop', 'bagel_shop': 'Fuel Stop', 'bakery': 'Fuel Stop',
         'cake_shop': 'Fuel Stop', 'candy_store': 'Fuel Stop', 'cat_cafe': 'Fuel Stop',
         'chocolate_factory': 'Fuel Stop', 'chocolate_shop': 'Fuel Stop', 'coffee_roastery': 'Fuel Stop',
@@ -50,7 +51,7 @@ def filter_and_score_gems(api_key, input_csv='venues.csv', output_csv='final_hid
         'sandwich_shop': 'Fuel Stop', 'snack_bar': 'Fuel Stop', 'soup_restaurant': 'Fuel Stop',
         'tea_house': 'Fuel Stop', 'cafe': 'Fuel Stop',
 
-        # --- MAIN EVENT (Full Sit-down) ---
+        # full meal (actual restaurants)
         'afghani_restaurant': 'Main Event', 'african_restaurant': 'Main Event', 'american_restaurant': 'Main Event',
         'argentinian_restaurant': 'Main Event', 'asian_fusion_restaurant': 'Main Event',
         'asian_restaurant': 'Main Event',
@@ -98,14 +99,14 @@ def filter_and_score_gems(api_key, input_csv='venues.csv', output_csv='final_hid
         'vegan_restaurant': 'Main Event', 'vegetarian_restaurant': 'Main Event', 'vietnamese_restaurant': 'Main Event',
         'western_restaurant': 'Main Event',
 
-        # --- SOCIAL HOUR (Drinks) ---
+        # drinks etc
         'bar': 'Social Hour', 'bar_and_grill': 'Social Hour', 'beer_garden': 'Social Hour',
         'brewery': 'Social Hour', 'brewpub': 'Social Hour', 'cocktail_bar': 'Social Hour',
         'gastropub': 'Social Hour', 'hookah_bar': 'Social Hour', 'irish_pub': 'Social Hour',
         'lounge_bar': 'Social Hour', 'oyster_bar_restaurant': 'Social Hour', 'pub': 'Social Hour',
         'sports_bar': 'Social Hour', 'wine_bar': 'Social Hour', 'winery': 'Social Hour',
 
-        # --- QUICK & LOCAL (Casual/Fast) ---
+        # quick local bites
         'barbecue_restaurant': 'Quick & Local', 'burrito_restaurant': 'Quick & Local',
         'chicken_restaurant': 'Quick & Local',
         'chicken_wings_restaurant': 'Quick & Local', 'dumpling_restaurant': 'Quick & Local',
@@ -122,20 +123,21 @@ def filter_and_score_gems(api_key, input_csv='venues.csv', output_csv='final_hid
         'tonkatsu_restaurant': 'Quick & Local', 'yakiniku_restaurant': 'Quick & Local',
         'yakitori_restaurant': 'Quick & Local',
 
-        # --- CULTURE ---
+        # culture
         'art_gallery': 'Culture', 'museum': 'Culture', 'library': 'Culture', 'cultural_center': 'Culture',
         'planetarium': 'Culture', 'aquarium': 'Culture',
 
-        # --- OUTDOORS ---
+        # outdoors
         'park': 'Outdoors', 'garden': 'Outdoors', 'hiking_area': 'Outdoors', 'dog_park': 'Outdoors',
         'zoo': 'Outdoors', 'nature_reserve': 'Outdoors', 'national_park': 'Outdoors',
 
-        # --- URBAN ADVENTURE ---
+        # urban
         'tourist_attraction': 'Urban Adventure', 'landmark': 'Urban Adventure',
         'historical_landmark': 'Urban Adventure',
         'movie_theater': 'Urban Adventure', 'bowling_alley': 'Urban Adventure', 'amusement_park': 'Urban Adventure'
     }
 
+    
     def get_primary_type(t):
         if not isinstance(t, str): return "unknown"
         clean_t = t.replace("[", "").replace("]", "").replace("'", "").replace('"', "")
@@ -144,22 +146,14 @@ def filter_and_score_gems(api_key, input_csv='venues.csv', output_csv='final_hid
     filtered_df['primary_type_clean'] = filtered_df['primary_type'].apply(get_primary_type)
     filtered_df['vibe_bucket'] = filtered_df['primary_type_clean'].map(VIBE_MAPPING).fillna('Other Activity/Food')
 
-    # 6. Extract Top 3 per Vibe Bucket (The finalists for API call)
-    finalists = (
-        filtered_df.sort_values(by='gem_score', ascending=False)
-        .groupby('vibe_bucket')
-        .head(3)
-    ).copy()
+    # get top 3 places within each vibe
+    finalists = (filtered_df.sort_values(by='gem_score', ascending=False).groupby('vibe_bucket').head(3)).copy()
 
-    # 7. LAZY LOAD: Call Google API for Top 3 Finalists only
-    print(f"API Phase: Fetching summaries for {len(finalists)} candidates...")
-
+    # sentiment analysis on top 3 by using google reviews
     review_sentiments = []
 
     for _, row in finalists.iterrows():
         place_id = row['place_id']
-
-        # Details request focusing on REVIEWS
         url = f"https://places.googleapis.com/v1/places/{place_id}"
         headers = {
             "X-Goog-Api-Key": api_key,
@@ -171,34 +165,22 @@ def filter_and_score_gems(api_key, input_csv='venues.csv', output_csv='final_hid
             response = requests.get(url, headers=headers)
             if response.status_code == 200:
                 reviews_list = response.json().get('reviews', [])
-                # Combine the text of all 5 reviews into one giant string
                 combined_review_text = " ".join([r.get('text', {}).get('text', '') for r in reviews_list])
         except Exception as e:
             print(f"Error fetching reviews for {row['name']}: {e}")
 
-        # Run Sentiment Analysis on the combined reviews
         sentiment = analyzer.polarity_scores(combined_review_text)['compound'] if combined_review_text else 0.5
         review_sentiments.append(sentiment)
 
     finalists['sentiment_score'] = review_sentiments
 
-    # 8. FINAL COMBINED RANKING
+    # final weighted scoring by sentiment + previous weighted rating/rating count score
     finalists['final_combined_score'] = (finalists['gem_score'] * 0.8) + (finalists['sentiment_score'] * 0.2)
 
-    # --- 9. THE SELECTION STEP (ADDITION) ---
-    # We sort by the final combined score and take ONLY the top 1 per bucket
-    winners_only = (
-        finalists.sort_values(by='final_combined_score', ascending=False)
-        .groupby('vibe_bucket')
-        .head(1)  # <--- CHANGE: Only the #1 winner survives
-    )
+    # filtering of top place by final score
+    winners = (finalists.sort_values(by='final_combined_score', ascending=False).groupby('vibe_bucket').head(1))
+    winners.to_csv(output_csv, index=False)
 
-    # 10. Save and Output
-    winners_only.to_csv(output_csv, index=False)
-
-    print("\n--- THE ROUTLETTE CHAMPIONS ---")
-    print(winners_only[['vibe_bucket', 'name', 'final_combined_score']])
-
-    return winners_only
+    return winners
 
 scored_gems = filter_and_score_gems(API_KEY)
