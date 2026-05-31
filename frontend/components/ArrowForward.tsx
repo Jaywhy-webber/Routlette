@@ -17,6 +17,7 @@ export type ArrowForwardType = {
   hasIconEnd?: boolean;
   hasIconStart?: boolean;
   label?: string;
+  onPress?: () => void;
 
   /** Variant props */
   size?: string;
@@ -33,9 +34,10 @@ const ArrowForward = ({
   hasIconEnd = false,
   hasIconStart = true,
   label = "Start Adventure!",
+  onPress,
 }: ArrowForwardType) => {
   return (
-    <Pressable style={styles.button}>
+    <Pressable style={styles.button} onPress={onPress}>
       {!!hasIconStart && iconStart}
       <Text style={styles.button2}>{label}</Text>
       {!!hasIconEnd && iconEnd}

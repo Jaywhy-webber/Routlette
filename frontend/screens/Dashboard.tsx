@@ -1,14 +1,22 @@
 import * as React from "react";
 import { ScrollView, StatusBar, StyleSheet, View, Text } from "react-native";
 import { Image } from "expo-image";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import Text1 from "../components/Text1";
 import TextContentTitle from "../components/TextContentTitle";
 import ArrowForward from "../components/ArrowForward";
+import LogoHeader from "../components/LogoHeader";
 import X from "../assets/X.svg";
 import Arrowforward1 from "../assets/arrow-forward.svg";
 import { Color, FontSize, FontFamily, Height, Width } from "../GlobalStyles";
+import { RootStackParamList } from "../types/navigation";
+
+type NavProp = NativeStackNavigationProp<RootStackParamList, "ArrowForward">;
 
 const Dashboard = () => {
+  const navigation = useNavigation<NavProp>();
+
   return (
     <ScrollView
       style={styles.dashboard}
@@ -31,9 +39,7 @@ const Dashboard = () => {
         <Text1 />
 
         {/*
-          CRUCIAL FIX: TextContentTitle used to have position: "absolute".
-          We wrap it tightly inside an auto-layout style frame so the grey card background
-          stretches dynamically around the text instead of letting it clip.
+          background stretches dynamically around the text instead clipping
         */}
         <View style={styles.howItWorksCard}>
           <TextContentTitle />
@@ -47,6 +53,7 @@ const Dashboard = () => {
 
       {/* 3. BUTTON SECTION */}
       <View style={styles.centeredButtonContainer}>
+        {/* Navigate to FilterScreen when the user is ready to set their preferences */}
         <ArrowForward
           size="Medium"
           state="Default"
@@ -68,13 +75,14 @@ const Dashboard = () => {
           hasIconEnd={false}
           hasIconStart
           label="Start Adventure!"
+          onPress={() => navigation.navigate("LocationScreen")}
         />
       </View>
     </ScrollView>
   );
 };
 
-// 🎨 COMPREHENSIVE FIXES
+
 const styles = StyleSheet.create({
   dashboard: {
     backgroundColor: Color.colorWhite,
@@ -85,7 +93,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingBottom: 40,
     alignItems: "center",
-    justifyContent: "flex-start", // Changed to flex-start so content naturally cascades top-to-bottom
+    justifyContent: "flex-start",
   },
   logoContainer: {
     alignItems: "center",
@@ -104,11 +112,11 @@ const styles = StyleSheet.create({
   },
   howItWorksCard: {
     width: "100%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#f5f5f5",
     borderRadius: 16,
     marginVertical: 15,
-    padding: 8, // Breathes padding inside the card container
-    overflow: "hidden", // Ensures child absolute remnants don't bleed out
+    padding: 8, 
+    overflow: "hidden",
   },
   footerText: {
     fontSize: FontSize.fs_16,
