@@ -169,11 +169,16 @@ const FilterScreen = () => {
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <LogoHeader />
 
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.backLink}>← Back</Text>
-      </TouchableOpacity>
+      <View style={styles.headerGroup}>
+        <TouchableOpacity
+          style={styles.backButtonContainer}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backLink}>← Back</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.heading}>Set Your Filters</Text>
+        <Text style={styles.heading}>Set Your Filters</Text>
+      </View>
 
       <Text style={styles.label}>Budget</Text>
       <OptionRow options={BUDGET_OPTIONS} selected={budget} onSelect={setBudget} />
@@ -217,73 +222,92 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Color.colorWhite,
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 16,
+content: {
+    paddingHorizontal: 24,
+    paddingTop: 0,
+    paddingBottom: 40,
+  },
+  headerGroup: {
+    width: "100%",
+    marginTop: 0,
+    marginBottom: -10,
+  },
+  backButtonContainer: {
+    alignSelf: 'flex-start',
   },
   backLink: {
-    fontSize: 13,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyRegular,
     color: Color.colorDarkslateblue,
     fontWeight: "600",
     marginBottom: 10,
   },
   heading: {
-    fontSize: 18,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.xl,
+    fontFamily: FontFamily.bodyBold,
     color: Color.colorGray,
     fontWeight: "700",
-    marginBottom: 10,
+    marginBottom: 0,
   },
   label: {
-    fontSize: 13,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.semi,
+    fontFamily: FontFamily.bodyBold,
     color: Color.colorGray,
     fontWeight: "600",
-    marginBottom: 6,
-    marginTop: 10,
+    marginBottom: 10,
+    marginTop: 16,
   },
   sublabel: {
-    fontSize: 11,
-    fontFamily: FontFamily.inter,
-    color: "#888",
-    marginBottom: 6,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyRegular,
+    color: "#555555",
+    lineHeight: 18,
+    marginBottom: 12,
     marginTop: -4,
   },
   optionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
+    gap: 8,
+    marginBottom: 10,
   },
   optionBtn: {
     borderRadius: StyleVariable.radius200,
-    borderWidth: 1.5,
-    borderColor: Color.colorDarkslateblue,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: "#d1d5db",
+    backgroundColor: "#f9fafb",
+    paddingVertical: 8,
+    paddingHorizontal: 14,
   },
   optionBtnActive: {
     backgroundColor: Color.colorDarkslateblue,
+    borderColor: Color.colorDarkslateblue,
   },
   optionText: {
-    fontSize: 13,
-    fontFamily: FontFamily.inter,
-    color: Color.colorDarkslateblue,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyRegular,
+    color: "#4b5563",
+    fontWeight: "500",
   },
   optionTextActive: {
     color: Color.colorGhostwhite,
+    fontWeight: "600",
   },
   generateBtn: {
-    marginTop: 16,
+    marginTop: 35,
     backgroundColor: Color.colorDarkslateblue,
     borderRadius: StyleVariable.radius200,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   generateBtnText: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyBold,
     color: Color.colorGhostwhite,
     fontWeight: "600",
   },

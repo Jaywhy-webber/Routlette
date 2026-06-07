@@ -16,12 +16,14 @@ const LogoHeader = () => (
 const styles = StyleSheet.create({
   container: {
     alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 4,
+    justifyContent: "center",
+    width: "100%",
+    paddingTop: 40,
+    paddingBottom: 16,
   },
   logo: {
-    width: 140,
-    height: 46,
+    width: 220,
+    height: 75,
   },
 });
 

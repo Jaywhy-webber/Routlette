@@ -25,13 +25,7 @@ const Dashboard = () => {
       <StatusBar />
 
       {/* 1. LOGO SECTION */}
-      <View style={styles.logoContainer}>
-        <Image
-          style={styles.logoImage}
-          contentFit="contain"
-          source={require("../assets/Untitled-Artwork-1.png")}
-        />
-      </View>
+      <LogoHeader />
 
       {/* 2. TEXT & CONTENT SECTION */}
       <View style={styles.contentContainer}>
@@ -73,7 +67,7 @@ const Dashboard = () => {
             />
           }
           hasIconEnd={false}
-          hasIconStart
+          hasIconStart={false}
           label="Start Adventure!"
           onPress={() => navigation.navigate("LocationScreen")}
         />
@@ -89,26 +83,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   dashboardScrollViewContent: {
-    paddingHorizontal: 24,
-    paddingTop: 40,
+    paddingHorizontal: 32,
+    paddingTop: 0,
     paddingBottom: 40,
-    alignItems: "center",
+    alignItems: "stretch",
     justifyContent: "flex-start",
   },
-  logoContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    marginVertical: 10,
-  },
-  logoImage: {
-    width: 220,
-    height: 75,
-  },
+
   contentContainer: {
     width: "100%",
-    maxWidth: 340,
-    alignItems: "center",
   },
   howItWorksCard: {
     width: "100%",
@@ -119,17 +102,17 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   footerText: {
-    fontSize: FontSize.fs_16,
+    fontSize: FontSize.base,
     lineHeight: 24,
-    fontFamily: FontFamily.inter,
+    fontFamily: FontFamily.bodyRegular,
     color: Color.colorGray,
     textAlign: "left",
     marginVertical: 16,
-    paddingHorizontal: 10,
+    paddingHorizontal: 0,
   },
   centeredButtonContainer: {
     width: "100%",
-    alignItems: "center",
+    alignItems: "stretch",
     justifyContent: "center",
     marginTop: 10,
     marginBottom: 20,

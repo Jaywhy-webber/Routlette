@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
   },
   button2: {
     width: 128,
-    fontSize: FontSize.fs_16,
+    fontSize: FontSize.base,
     lineHeight: 16,
-    fontFamily: FontFamily.inter,
+    fontFamily: FontFamily.bodyRegular,
     color: Color.colorWhitesmoke,
     textAlign: "left",
     height: Height.height_16,

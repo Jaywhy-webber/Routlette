@@ -52,7 +52,7 @@ const LocationScreen = () => {
         style={styles.nextBtn}
         onPress={() => navigation.navigate("FilterScreen")}
       >
-        <Text style={styles.nextBtnText}>Continue →</Text>
+        <Text style={styles.nextBtnText}>Continue</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -65,26 +65,26 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 24,
+    paddingTop: 0,
     paddingBottom: 40,
   },
   homeLink: {
-    fontSize: 13,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyRegular,
     color: Color.colorDarkslateblue,
     fontWeight: "600",
-    marginBottom: 16,
+    marginBottom: 10,
   },
   heading: {
-    fontSize: FontSize.fs_24,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.lg,
+    fontFamily: FontFamily.bodyBold,
     color: Color.colorGray,
     fontWeight: "700",
-    marginTop: 24,
     marginBottom: 8,
   },
   subheading: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyRegular,
     color: "#666",
     marginBottom: 24,
     lineHeight: 22,
@@ -98,13 +98,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   searchInput: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyRegular,
     color: Color.colorGray,
   },
   comingSoon: {
-    fontSize: 13,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyRegular,
     color: "#888",
     lineHeight: 20,
     marginBottom: 40,
@@ -116,8 +116,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   nextBtnText: {
-    fontSize: FontSize.fs_16,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyBold,
     color: Color.colorGhostwhite,
     fontWeight: "600",
   },

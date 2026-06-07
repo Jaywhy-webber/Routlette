@@ -7,7 +7,7 @@ export type Text1Type = {
 };
 
 const Text1 = ({
-  text = "Tired of repetitive nights out?\n\nAll the ‘hidden gems’ you see online\nare somehow all crowded IRL?\n\nWant to have an adventure in Singapore?\n\nWelcome to Routlette! The first personal\nalgorithmic route finder based on your\npreferences for an outing!",
+  text = "Tired of repetitive nights out?\n\nAll the ‘hidden gems’ you see online are somehow all crowded IRL?\n\nWant to have an adventure in Singapore?\n\nWelcome to Routlette! The first personal algorithmic route finder based on your preferences for an outing!",
 }: Text1Type) => {
   return (
     <View style={styles.textWrapper}>
@@ -19,17 +19,14 @@ const Text1 = ({
 const styles = StyleSheet.create({
   textWrapper: {
     width: "100%",
-    maxWidth: 290, // 👈 1. Restricts the text block width so it stays compact
-    alignSelf: "center", // 👈 2. Centers this entire bounding block on the screen
-    paddingVertical: 10,
-    justifyContent: "center",
+    paddingVertical: 12,
   },
   textContent: {
-    fontSize: FontSize.fs_16,
-    lineHeight: 20,
-    fontFamily: FontFamily.inter,
+    fontSize: FontSize.base,
+    lineHeight: 24,
+    fontFamily: FontFamily.bodyRegular,
     color: Color.colorGray,
-    textAlign: "left", // 👈 3. Changes the actual paragraphs to be cleanly left-aligned
+    textAlign: "left",
   },
 });
 

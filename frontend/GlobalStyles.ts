@@ -1,11 +1,15 @@
 /* Fonts */
 export const FontFamily = {
-  inter: "Inter",
+  bodyRegular: "",
+  bodyBold: "",
 };
 /* Font sizes */
 export const FontSize = {
-  fs_16: 16,
-  fs_24: 24,
+  sm: 13,
+  base: 16,
+  semi: 20,
+  lg: 24,
+  xl: 26,
 };
 /* Colors */
 export const Color = {
