@@ -156,6 +156,7 @@ The route always picks **2 food stops from different vibe buckets** and **1 acti
 ## Coming Next
 
 - [ ] Live GPS location input
+- [ ] More robust gem search (given Google Maps API constraints)
 - [ ] Full scoring pipeline with sentiment analysis connected to live route generation
 - [ ] Clue-based navigation (LLM-generated hints)
 - [ ] Supabase database for saved routes and user preferences
