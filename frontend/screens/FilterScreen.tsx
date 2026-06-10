@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   },
 content: {
     paddingHorizontal: 24,
-    paddingTop: 0,
+    paddingTop: StyleVariable.topPadding,
     paddingBottom: 40,
   },
   headerGroup: {

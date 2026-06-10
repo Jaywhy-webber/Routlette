@@ -9,7 +9,7 @@ import ArrowForward from "../components/ArrowForward";
 import LogoHeader from "../components/LogoHeader";
 import X from "../assets/X.svg";
 import Arrowforward1 from "../assets/arrow-forward.svg";
-import { Color, FontSize, FontFamily, Height, Width } from "../GlobalStyles";
+import { Color, FontSize, FontFamily, Height, Width, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "ArrowForward">;
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
   },
   dashboardScrollViewContent: {
     paddingHorizontal: 32,
-    paddingTop: 0,
+    paddingTop: StyleVariable.topPadding,
     paddingBottom: 40,
     alignItems: "stretch",
     justifyContent: "flex-start",
