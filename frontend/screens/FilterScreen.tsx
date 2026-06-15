@@ -8,15 +8,13 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { generateRoute } from "../services/api";
 import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
 import LogoHeader from "../components/LogoHeader";
 
-// NUS coordinates used as the default location for Milestone 1
-// (live GPS input is WIP)
 const DEFAULT_LAT = 1.2966;
 const DEFAULT_LNG = 103.7764;
 
@@ -54,6 +52,7 @@ const ACTIVITY_VIBE_OPTIONS = [
 ];
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "FilterScreen">;
+type RouteProps = import("@react-navigation/native").RouteProp<RootStackParamList, "FilterScreen">;
 
 // Single-select row
 function OptionRow<T extends string | number>({
@@ -114,6 +113,9 @@ function MultiSelectRow({
 
 const FilterScreen = () => {
   const navigation = useNavigation<NavProp>();
+  const route = useRoute<RouteProps>();
+  const startLat = route.params?.startLat ?? DEFAULT_LAT;
+  const startLng = route.params?.startLng ?? DEFAULT_LNG;
 
   // Filter state
   const [budget, setBudget] = React.useState(2);
@@ -142,8 +144,8 @@ const FilterScreen = () => {
     setLoading(true);
     try {
       const result = await generateRoute({
-        lat: DEFAULT_LAT,
-        lng: DEFAULT_LNG,
+        lat: startLat,
+        lng: startLng,
         budget,
         walking,
         mode,
@@ -156,8 +158,13 @@ const FilterScreen = () => {
         return;
       }
 
-      // Pass the route data to the results screen
-      navigation.navigate("ResultsScreen", { stops: result.stops, mode: result.mode });
+      navigation.navigate("NavigationScreen", {
+        stops: result.stops,
+        mode: result.mode,
+        journeyStartTime: Date.now(),
+        startLat,
+        startLng,
+      });
     } catch (err) {
       Alert.alert("Connection error", "Could not reach the backend. Is the server running?");
     } finally {

@@ -1,10 +1,9 @@
 import { Stop } from "../services/api";
 
-// Centralised navigation type — imported by screens
-// by avoiding circular imports (App imports screens, screens cannot import App)
 export type RootStackParamList = {
   ArrowForward: undefined;
   LocationScreen: undefined;
-  FilterScreen: undefined;
-  ResultsScreen: { stops: Stop[]; mode: string };
+  FilterScreen: { startLat?: number; startLng?: number } | undefined;
+  NavigationScreen: { stops: Stop[]; mode: string; journeyStartTime: number; startLat: number; startLng: number };
+  CompletionScreen: { stops: Stop[]; journeyStartTime: number; totalDistance: number };
 };

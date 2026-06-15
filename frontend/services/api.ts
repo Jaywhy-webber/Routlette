@@ -1,6 +1,6 @@
 // All calls to the FastAPI backend go through this
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "http://192.168.1.12:8000";
 
 export type Stop = {
   name: string;
