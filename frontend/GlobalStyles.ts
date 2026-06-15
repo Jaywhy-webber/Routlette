@@ -24,6 +24,7 @@ export const StyleVariable = {
   radius200: 8,
   space200: 8,
   space300: 12,
+  topPadding: 40,
 };
 /* width */
 export const Width = {
