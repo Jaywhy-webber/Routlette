@@ -161,7 +161,7 @@ const FilterScreen = () => {
       navigation.navigate("NavigationScreen", {
         stops: result.stops,
         mode: result.mode,
-        journeyStartTime: Date.now(),
+        journeyStartTime: new Date().toISOString(),
         startLat,
         startLng,
       });
