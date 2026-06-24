@@ -217,8 +217,23 @@ const NavigationScreen = () => {
         )}
       </Animated.View>
 
-      <TouchableOpacity style={styles.skipBtn} onPress={handleArrived}>
-        <Text style={styles.skipBtnText}>Skip (Test)</Text>
+      <TouchableOpacity
+        style={styles.skipBtn}
+        onPress={() => {
+          if (!revealed) {
+            hasRevealedRef.current = true;
+            setRevealed(true);
+            Animated.timing(fadeAnim, {
+              toValue: 1,
+              duration: 800,
+              useNativeDriver: true,
+            }).start();
+          } else {
+            handleArrived();
+          }
+        }}
+      >
+        <Text style={styles.skipBtnText}>{revealed ? "Skip to next" : "Skip (Test)"}</Text>
       </TouchableOpacity>
     </View>
   );

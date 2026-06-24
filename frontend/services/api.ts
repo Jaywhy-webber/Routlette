@@ -43,7 +43,14 @@ export async function generateRoute(params: FilterParams): Promise<RouteResponse
   params.food_vibes.forEach((v) => url.searchParams.append("food_vibes", v));
   params.activity_vibes.forEach((v) => url.searchParams.append("activity_vibes", v));
 
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`Backend error: ${res.status}`);
-  return res.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const res = await fetch(url.toString(), { signal: controller.signal });
+    if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(timeout);
+  }
 }
