@@ -3,7 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import pandas as pd
 import random
+import os
+import asyncio
+import httpx
+from groq import AsyncGroq
+from dotenv import load_dotenv
 from filter import apply_filters
+
+load_dotenv()
+groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
+USE_LIVE_API = os.getenv("USE_LIVE_API", "false").lower() == "true"
 
 app = FastAPI()
 
@@ -21,6 +31,18 @@ df = pd.read_csv("venues.csv")
 # Vibe buckets available for each category
 FOOD_VIBES = ["Fuel Stop", "Quick & Local", "Main Event"]
 ACTIVITY_VIBES = ["Culture", "Outdoors", "Urban Adventure"]
+
+# Live API: broad search types that map to the above vibe buckets via VIBE_MAPPING
+FOOD_TYPES = ["restaurant", "cafe", "food_court", "bakery", "bar", "hawker_centre"]
+ACTIVITY_TYPES = ["tourist_attraction", "museum", "park", "art_gallery", "movie_theater"]
+
+PRICE_LEVEL_MAP = {
+    "PRICE_LEVEL_FREE": 1, "PRICE_LEVEL_INEXPENSIVE": 1,
+    "PRICE_LEVEL_MODERATE": 2, "PRICE_LEVEL_EXPENSIVE": 3,
+    "PRICE_LEVEL_VERY_EXPENSIVE": 4,
+}
+
+WALKING_MAP = {1: 300, 2: 600, 3: 1000, 4: 1500, 5: 2000}
 
 # Maps each Google Places primary_type to a vibe bucket
 VIBE_MAPPING = {
@@ -108,13 +130,159 @@ def get_vibe(primary_type) -> str:
     return VIBE_MAPPING.get(clean, "Other")
 
 
+PLACES_FIELD_MASK = (
+    "places.id,places.displayName,places.formattedAddress,"
+    "places.location,places.primaryType,places.rating,"
+    "places.userRatingCount,places.priceLevel,places.businessStatus"
+)
+
+
+async def fetch_live_venues(lat: float, lng: float, radius_m: int) -> pd.DataFrame:
+    url = "https://places.googleapis.com/v1/places:searchNearby"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
+        "X-Goog-FieldMask": PLACES_FIELD_MASK,
+    }
+
+    def build_body(types: list) -> dict:
+        return {
+            "includedTypes": types,
+            "maxResultCount": 20,
+            "locationRestriction": {
+                "circle": {
+                    "center": {"latitude": lat, "longitude": lng},
+                    "radius": float(radius_m),
+                }
+            },
+        }
+
+    def parse_places(data: dict, category: str) -> list:
+        rows = []
+        for p in data.get("places", []):
+            if p.get("businessStatus") != "OPERATIONAL":
+                continue
+            rows.append({
+                "place_id": p.get("id", ""),
+                "name": p.get("displayName", {}).get("text", ""),
+                "category": category,
+                "primary_type": p.get("primaryType", ""),
+                "address": p.get("formattedAddress", ""),
+                "lat": p.get("location", {}).get("latitude", 0.0),
+                "lng": p.get("location", {}).get("longitude", 0.0),
+                "price_level": PRICE_LEVEL_MAP.get(p.get("priceLevel", ""), 2),
+                "rating": p.get("rating", None),
+                "rating_count": p.get("userRatingCount", None),
+            })
+        return rows
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            food_resp, activity_resp = await asyncio.gather(
+                client.post(url, headers=headers, json=build_body(FOOD_TYPES)),
+                client.post(url, headers=headers, json=build_body(ACTIVITY_TYPES)),
+            )
+        rows = (
+            parse_places(food_resp.json(), "food")
+            + parse_places(activity_resp.json(), "activity")
+        )
+        return pd.DataFrame(rows) if rows else pd.DataFrame()
+    except Exception as e:
+        print(f"fetch_live_venues error: {e}")
+        return pd.DataFrame()
+
+
+async def fetch_stop_reviews(client: httpx.AsyncClient, place_id: str) -> str:
+    try:
+        url = f"https://places.googleapis.com/v1/places/{place_id}"
+        resp = await client.get(
+            url,
+            headers={"X-Goog-Api-Key": GOOGLE_PLACES_API_KEY, "X-Goog-FieldMask": "reviews"},
+            timeout=8.0,
+        )
+        if resp.status_code != 200:
+            return ""
+        reviews = resp.json().get("reviews", [])
+        snippets = []
+        for review in reviews:
+            text_obj = review.get("text", {})
+            if text_obj.get("languageCode") != "en":
+                continue
+            text = text_obj.get("text", "").strip()
+            if not text:
+                continue
+            snippets.append(" ".join(text.split()[:100]))
+            if len(snippets) >= 3:
+                break
+        return " | ".join(snippets)
+    except Exception:
+        return ""
+
+
+FALLBACK_CLUES = {
+    ("food", "Fuel Stop"): "A quiet corner awaits where warmth is served in a cup and time slows down. Follow the scent.",
+    ("food", "Quick & Local"): "Something honest and unpretentious is waiting — the kind of place locals return to without thinking twice.",
+    ("food", "Main Event"): "Your next stop deserves a seat at the table. An experience worth the walk is just ahead.",
+    ("food", "Social Hour"): "The night has its own rhythm here. Find where the glasses clink and conversations carry.",
+    ("activity", "Culture"): "Step somewhere that holds more than meets the eye. Let the space speak before you do.",
+    ("activity", "Outdoors"): "The city fades and something greener takes its place. Breathe it in when you arrive.",
+    ("activity", "Urban Adventure"): "Look for what others walk past. Your destination rewards those who pay attention.",
+}
+
+async def generate_clue(stop: dict) -> str:
+    try:
+        review_section = ""
+        if stop.get("review_snippets"):
+            review_section = (
+                f"\nReal visitor impressions (use these for atmosphere and sensory detail — "
+                f"do NOT quote directly or name the venue):\n{stop['review_snippets']}\n"
+            )
+
+        user_content = (
+            f"Write a clue for this stop:\n"
+            f"Venue name (hidden context only — do NOT reveal this in the clue): {stop['name']}\n"
+            f"Category: {stop['category']}\n"
+            f"Vibe: {stop['vibe']}\n"
+            f"Price level: {'$' * stop['price_level']}\n"
+            f"{review_section}\n"
+            "Keep it to 2-3 sentences. Be mysterious and enticing. "
+            "Do not name the venue, its street, or quote reviews verbatim."
+        )
+
+        response = await groq_client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a mystery guide for a surprise adventure in Singapore. "
+                        "Your job is to write short, evocative clues (2-3 sentences) that hint at a destination "
+                        "without revealing its name, street, or address. "
+                        "Use any visitor impressions provided as raw material for atmosphere and sensory detail — "
+                        "extract the feeling, not the facts. "
+                        "Never mention the venue name or any navigational directions."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": user_content,
+                },
+            ],
+            max_tokens=120,
+            temperature=0.85,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception:
+        return FALLBACK_CLUES.get((stop["category"], stop["vibe"]), "Something unexpected awaits. Keep walking.")
+
+
 @app.get("/")
 def root():
     return {"status": "Routlette backend is running"}
 
 
 @app.get("/generate-route")
-def generate_route(
+async def generate_route(
     lat: float = Query(default=1.2966),
     lng: float = Query(default=103.7764),
     budget: int = Query(default=2, ge=1, le=4),
@@ -125,8 +293,14 @@ def generate_route(
     activity_vibes: List[str] = Query(default=ACTIVITY_VIBES),
 ):
     # Run the filter pipeline: exclude bad types, enforce budget, clip by radius
-    # Pass category="both" so both food and activity venues are included
-    filtered = apply_filters(df, lat, lng, budget, "both", walking)
+    if USE_LIVE_API:
+        radius_m = WALKING_MAP[walking]
+        live_df = await fetch_live_venues(lat, lng, radius_m)
+        if live_df.empty:
+            return {"stops": [], "mode": mode, "error": "Could not fetch venues — check API key or try again."}
+        filtered = apply_filters(live_df, lat, lng, budget, "both", walking)
+    else:
+        filtered = apply_filters(df, lat, lng, budget, "both", walking)
 
     if filtered.empty:
         return {"stops": [], "mode": mode, "error": "No venues match your filters — try relaxing the radius or budget."}
@@ -174,6 +348,7 @@ def generate_route(
         # Pick one of the top-5 scorers
         pick = pool.nlargest(5, "score").sample(1).iloc[0]
         stops.append({
+            "place_id": str(pick["place_id"]) if "place_id" in pick.index else "",
             "name": pick["name"],
             "category": pick["category"],
             "vibe": vibe,
@@ -182,9 +357,24 @@ def generate_route(
             "lng": float(pick["lng"]),
             "price_level": int(pick["price_level"]),
             "score": round(float(pick["score"]), 3),
+            "review_snippets": pick["review_snippets"] if "review_snippets" in pick.index and pd.notna(pick.get("review_snippets")) else "",
         })
         # Remove selected venue so it won't be picked again
         remaining = remaining[remaining["name"] != pick["name"]]
+
+    if USE_LIVE_API and stops:
+        async with httpx.AsyncClient() as client:
+            fetched_reviews = await asyncio.gather(
+                *[fetch_stop_reviews(client, s["place_id"]) for s in stops]
+            )
+        for stop, review in zip(stops, fetched_reviews):
+            stop["review_snippets"] = review
+
+    clues = await asyncio.gather(*[generate_clue(stop) for stop in stops])
+    for stop, clue in zip(stops, clues):
+        stop["clue"] = clue
+        stop.pop("review_snippets", None)
+        stop.pop("place_id", None)
 
     return {"stops": stops, "mode": mode}
 

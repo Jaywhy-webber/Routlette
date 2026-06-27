@@ -11,6 +11,7 @@ export type Stop = {
   lng: number;
   price_level: number;
   score: number;
+  clue: string;
 };
 
 export type RouteResponse = {
