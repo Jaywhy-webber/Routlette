@@ -9,6 +9,7 @@ import httpx
 from groq import AsyncGroq
 from dotenv import load_dotenv
 from filter import apply_filters
+from side_quests import get_side_quest
 
 load_dotenv()
 groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
@@ -358,6 +359,7 @@ async def generate_route(
             "price_level": int(pick["price_level"]),
             "score": round(float(pick["score"]), 3),
             "review_snippets": pick["review_snippets"] if "review_snippets" in pick.index and pd.notna(pick.get("review_snippets")) else "",
+            "side_quest": get_side_quest(pick.get("primary_type", ""), pick["category"])
         })
         # Remove selected venue so it won't be picked again
         remaining = remaining[remaining["name"] != pick["name"]]

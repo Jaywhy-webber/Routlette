@@ -1,7 +1,10 @@
 import math
 import pandas as pd
 
-EXCLUDED_TYPES = {"shopping_mall", "barbecue_area", "educational_institution"}
+EXCLUDED_TYPES = {"shopping_mall", "gift_shop", "wholesaler", "store", "barbecue_area",
+                  "educational_institution", "child_care_agency", "manufacturer", "garden",
+                  "art_studio", "tour_agency", "car_dealer", "corporate_office", "transportation_service",
+                  }
 
 # Maps the frontend walking slider (1–5) to a metre radius
 WALKING_MAP = {1: 300, 2: 600, 3: 1000, 4: 1500, 5: 2000}

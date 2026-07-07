@@ -12,6 +12,7 @@ export type Stop = {
   price_level: number;
   score: number;
   clue: string;
+  side_quest?: string;
 };
 
 export type RouteResponse = {

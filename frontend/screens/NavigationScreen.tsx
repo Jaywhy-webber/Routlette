@@ -206,6 +206,13 @@ const NavigationScreen = () => {
           <Text style={styles.revealCategoryText}>{currentStop.category.toUpperCase()}</Text>
         </View>
 
+        {revealed && currentStop.side_quest ? (
+          <View style={styles.questBox}>
+            <Text style={styles.questTitle}>Optional Side Quest</Text>
+            <Text style={styles.questText}>{currentStop.side_quest}</Text>
+          </View>
+        ) : null}
+
         {revealed && (
           <TouchableOpacity style={styles.arrivedBtn} onPress={handleArrived}>
             <Text style={styles.arrivedBtnText}>
@@ -383,6 +390,34 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyRegular,
     color: "#9ca3af",
+  },
+  questBox: {
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    width: "100%",
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  questTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#d4a017", // Polished gold theme accent
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  questText: {
+    fontSize: 14,
+    color: "#4b5563",
+    lineHeight: 20,
+    fontFamily: FontFamily.bodyRegular,
   },
 });
 
