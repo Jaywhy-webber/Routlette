@@ -25,27 +25,36 @@ FIELD_MASK = ",".join([
 
 # 1 search area for now to get a static dataset to work out filtering logic to reduce api calls
 SEARCH_AREAS = [
-    ("NUS", 1.2966, 103.7764, 2000),
+    ("Toa Payoh", 1.3332378651265921, 103.85952369061232, 2000),
 ]
 
 # search fields for food/activities subtypes to maximize results since google api only returns max 20 results
 FOOD_TYPES = [
-    ["restaurant"],
-    ["cafe"],
-    ["food_court"],
-    ["bakery"],
-    ["bar"],
-    ["hawker_centre"],
+    "restaurant", "cafe", "food_court", "bakery", "bar",
+    "coffee_roastery", "coffee_shop", "dessert_restaurant", "dessert_shop",
+    "deli", "pub", "wine_bar", "diner", "ice_cream_shop",
+    "meal_takeaway", "sandwich_shop"
 ]
 
 ACTIVITY_TYPES = [
-    ["tourist_attraction"],
-    ["museum"],
-    ["park"],
-    ["art_gallery"],
-    ["shopping_mall"],
-    ["movie_theater"],
+    "tourist_attraction", "museum", "park", "art_gallery",
+    "movie_theater", "live_music_venue", "art_studio", "comedy_club",
+    "historical_place", "historical_landmark", "garden", "scenic_spot",
+    "cultural_center", "library", "amusement_center"
 ]
+
+# "hawker_centre" removed because it's unsupported in the New Places API
+
+def parse_price_level(raw):
+    mapping = {
+        "PRICE_LEVEL_FREE":         1,
+        "PRICE_LEVEL_INEXPENSIVE":  1,
+        "PRICE_LEVEL_MODERATE":     2,
+        "PRICE_LEVEL_EXPENSIVE":    3,
+        "PRICE_LEVEL_VERY_EXPENSIVE": 4,
+    }
+    return mapping.get(raw, 2)
+
 
 def search_nearby(lat, lng, radius, place_types, label):
     headers = {
@@ -57,6 +66,7 @@ def search_nearby(lat, lng, radius, place_types, label):
     body = {
         "includedTypes": place_types,
         "maxResultCount": 20,
+        "rankPreference": "DISTANCE",
         "locationRestriction": {
             "circle": {
                 "center": {"latitude": lat, "longitude": lng},
@@ -73,78 +83,125 @@ def search_nearby(lat, lng, radius, place_types, label):
     print(f"{label}: got {len(places)} results")
     return places
 
-def parse_price_level(raw):
-    mapping = {
-        "PRICE_LEVEL_FREE":         1,
-        "PRICE_LEVEL_INEXPENSIVE":  1,
-        "PRICE_LEVEL_MODERATE":     2,
-        "PRICE_LEVEL_EXPENSIVE":    3,
-        "PRICE_LEVEL_VERY_EXPENSIVE": 4,
-    }
-    return mapping.get(raw, 2)
+
+def generate_grid(center_lat, center_lng, total_radius_m, step_size_m=400):
+    # 111,000 meters roughly equals 1 degree of latitude/longitude
+    deg_per_meter = 1.0 / 111000.0
+    step_deg = step_size_m * deg_per_meter
+    max_deg_offset = total_radius_m * deg_per_meter
+
+    grid_points = []
+
+    # Calculate starting and ending degree boundaries
+    start_lat = center_lat - max_deg_offset
+    end_lat = center_lat + max_deg_offset
+    start_lng = center_lng - max_deg_offset
+    end_lng = center_lng + max_deg_offset
+
+    current_lat = start_lat
+    while current_lat <= end_lat:
+        current_lng = start_lng
+        while current_lng <= end_lng:
+            # Optional: Only include points that fall inside the true circular radius
+            # This prevents wasting API calls on the extreme outer corners of our square grid
+            dist_from_center = ((current_lat - center_lat) ** 2 + (current_lng - center_lng) ** 2) ** 0.5
+            if dist_from_center <= max_deg_offset:
+                grid_points.append((current_lat, current_lng))
+
+            current_lng += step_deg
+        current_lat += step_deg
+
+    return grid_points
+
+
+def harvest_coordinate(lat, lng, radius, types, category_label, seen_ids, all_rows, neighborhood_label, depth=1, max_depth=2):
+    # searches a specific coordinate, automatically subdivides itself into 4 smaller micro-zones if 20 result cap reached
+    label_prefix = f"{category_label} [Depth {depth}]"
+    places = search_nearby(lat, lng, radius, types, label=label_prefix)
+    for place in places:
+        pid = place.get("id")
+        if pid in seen_ids or place.get("businessStatus") == "CLOSED_PERMANENTLY":
+            continue
+        seen_ids.add(pid)
+        all_rows.append({
+            "place_id": pid,
+            "name": place.get("displayName", {}).get("text", ""),
+            "category": category_label.lower(),
+            "primary_type": place.get("primaryType", ""),
+            "address": place.get("formattedAddress", ""),
+            "lat": place.get("location", {}).get("latitude"),
+            "lng": place.get("location", {}).get("longitude"),
+            "price_level": parse_price_level(place.get("priceLevel", "")),
+            "rating": place.get("rating", 0),
+            "rating_count": place.get("userRatingCount", 0),
+            "neighbourhood": neighborhood_label,
+        })
+
+    # further area subdivision
+    if len(places) == 20 and depth < max_depth:
+        print(f">20 places found at ({lat:.4f}, {lng:.4f}). Subdividing area...")
+        offset_deg = (radius * 0.4) / 111000.0
+        sub_quadrants = [
+            (lat + offset_deg, lng + offset_deg),
+            (lat + offset_deg, lng - offset_deg),
+            (lat - offset_deg, lng + offset_deg),
+            (lat - offset_deg, lng - offset_deg),
+        ]
+        time.sleep(0.2)
+
+        for sub_lat, sub_lng in sub_quadrants:
+            harvest_coordinate(
+                lat=sub_lat,
+                lng=sub_lng,
+                radius=radius / 2,
+                types=types,
+                category_label=category_label,
+                seen_ids=seen_ids,
+                all_rows=all_rows,
+                neighborhood_label=neighborhood_label,
+                depth=depth + 1,
+                max_depth=max_depth
+            )
+
 
 def main():
     all_rows = []
-    # avoid duplicates
     seen_ids = set()
 
-    for (label, lat, lng, radius) in SEARCH_AREAS:
-        print(f"\nSearching: {label}")
+    for (neighborhood, center_lat, center_lng, total_radius) in SEARCH_AREAS:
+        print(f"\n==========================================")
+        print(f"Generating harvest grid for: {neighborhood}")
+        print(f"==========================================")
 
-        # food search
-        for type_list in FOOD_TYPES:
-            for place in search_nearby(lat, lng, radius, type_list, f"{label} {type_list[0]}"):
-                pid = place.get("id")
-                # ignore places already seen/closed permanently
-                if pid in seen_ids or place.get("businessStatus") == "CLOSED_PERMANENTLY":
-                    continue
-                seen_ids.add(pid)
-                all_rows.append({
-                    "place_id":      pid,
-                    "name":          place.get("displayName", {}).get("text", ""),
-                    "category":      "food",
-                    "primary_type":  place.get("primaryType", ""),
-                    "address":       place.get("formattedAddress", ""),
-                    "lat":           place.get("location", {}).get("latitude"),
-                    "lng":           place.get("location", {}).get("longitude"),
-                    "price_level":   parse_price_level(place.get("priceLevel", "")),
-                    "rating":        place.get("rating", 0),
-                    "rating_count":  place.get("userRatingCount", 0),
-                    "neighbourhood": label,
-                })
-            time.sleep(0.3)
+        grid_points = generate_grid(center_lat, center_lng, total_radius, step_size_m=400)
+        print(f"Base grid generated: Sweeping through {len(grid_points)} initial zones...\n")
 
-        # activities search
-        for type_list in ACTIVITY_TYPES:
-            for place in search_nearby(lat, lng, radius, type_list, f"{label} {type_list[0]}"):
-                pid = place.get("id")
-                if pid in seen_ids or place.get("businessStatus") == "CLOSED_PERMANENTLY":
-                    continue
-                seen_ids.add(pid)
-                all_rows.append({
-                    "place_id":      pid,
-                    "name":          place.get("displayName", {}).get("text", ""),
-                    "category":      "activity",
-                    "primary_type":  place.get("primaryType", ""),
-                    "address":       place.get("formattedAddress", ""),
-                    "lat":           place.get("location", {}).get("latitude"),
-                    "lng":           place.get("location", {}).get("longitude"),
-                    "price_level":   parse_price_level(place.get("priceLevel", "")),
-                    "rating":        place.get("rating", 0),
-                    "rating_count":  place.get("userRatingCount", 0),
-                    "neighbourhood": label,
-                })
-            time.sleep(0.3)
+        for idx, (grid_lat, grid_lng) in enumerate(grid_points):
+            print(f"\n--- Sweeping Base Point {idx + 1}/{len(grid_points)} ({grid_lat:.4f}, {grid_lng:.4f}) ---")
 
-    # remove irrelevant entries
-    df = pd.DataFrame(all_rows)
-    df = df[df["name"] != ""]          
-    df = df[df["rating"] > 0]   
-    df = df.drop_duplicates("place_id")
+            # 1. Food Sweep (Starts at 300m radius, will auto-divide if it hits 20)
+            harvest_coordinate(grid_lat, grid_lng, radius=300, types=FOOD_TYPES,
+                               category_label="Food", seen_ids=seen_ids,
+                               all_rows=all_rows, neighborhood_label=neighborhood)
+            time.sleep(0.2)
 
-    df.to_csv("venues.csv", index=False)
-    print(df["category"].value_counts())
-    print(df["neighbourhood"].value_counts())
+            # 2. Activity Sweep (Starts at 300m radius, will auto-divide if it hits 20)
+            harvest_coordinate(grid_lat, grid_lng, radius=300, types=ACTIVITY_TYPES,
+                               category_label="Activity", seen_ids=seen_ids,
+                               all_rows=all_rows, neighborhood_label=neighborhood)
+            time.sleep(0.2)
+
+    # Save data structure
+    if all_rows:
+        df = pd.DataFrame(all_rows)
+        df = df[df["name"] != ""]
+        df = df[df["rating"] > 0]
+
+        filename = "venues_new_test_2.csv"
+        df.to_csv(filename, index=False)
+        print(f"\n Search complete! Saved {len(df)} unique venues to {filename}.")
+    else:
+        print("\n No venues found.")
 
 if __name__ == "__main__":
     main()
