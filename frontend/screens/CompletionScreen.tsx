@@ -4,79 +4,35 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
+  TextInput,
   StyleSheet,
   Animated,
   Dimensions,
+  Alert,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
-import { Stop } from "../services/api";
 import LogoHeader from "../components/LogoHeader";
+import { StopSummaryCard } from "../components/StopSummaryCard";
+import { formatDuration, formatDistance } from "../utils/format";
+import { saveRoute } from "../services/routes";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "CompletionScreen">;
 type RouteProps = RouteProp<RootStackParamList, "CompletionScreen">;
 
-const CATEGORY_COLORS: Record<string, string> = {
-  food: "#d4a017",
-  activity: "#2e7d32",
-};
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
-
-function formatDistance(metres: number): string {
-  if (metres >= 1000) return `${(metres / 1000).toFixed(2)} km`;
-  return `${Math.round(metres)} m`;
-}
-
-function StopSummaryCard({ stop, index }: { stop: Stop; index: number }) {
-  const [expanded, setExpanded] = React.useState(false);
-  const badgeColor = CATEGORY_COLORS[stop.category] ?? Color.colorDarkslateblue;
-
-  return (
-    <TouchableOpacity
-      style={styles.stopCard}
-      onPress={() => setExpanded(!expanded)}
-      activeOpacity={0.85}
-    >
-      <View style={styles.stopCardHeader}>
-        <Text style={styles.stopNumber}>Stop {index + 1}</Text>
-        <View style={[styles.badge, { backgroundColor: badgeColor }]}>
-          <Text style={styles.badgeText}>{stop.category.toUpperCase()}</Text>
-        </View>
-      </View>
-      <Text style={styles.stopName}>{stop.name}</Text>
-      <Text style={styles.stopVibe}>{stop.vibe}</Text>
-
-      {expanded && (
-        <View style={styles.expandedDetails}>
-          <Text style={styles.detailText}>{stop.address}</Text>
-          <Text style={styles.detailText}>{"$".repeat(stop.price_level)}</Text>
-        </View>
-      )}
-
-      <Text style={styles.expandHint}>{expanded ? "Tap to collapse" : "Tap for details"}</Text>
-    </TouchableOpacity>
-  );
-}
+type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 const CompletionScreen = () => {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProps>();
 
-  const { stops, journeyStartTime, totalDistance, actualPath = [] } = route.params;
+  const { stops, mode, journeyStartTime, totalDistance, actualPath = [] } = route.params;
 
   const journeyDuration = Date.now() - journeyStartTime;
+  const journeyEndTime = React.useRef(Date.now()).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const mapRef = React.useRef<MapView | null>(null);
 
@@ -91,6 +47,9 @@ const CompletionScreen = () => {
     latitude: stop.lat,
     longitude: stop.lng,
   }));
+
+  const [label, setLabel] = React.useState("");
+  const [saveStatus, setSaveStatus] = React.useState<SaveStatus>("idle");
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -115,6 +74,28 @@ const CompletionScreen = () => {
       }
     }
   }, [actualPath, stops]);
+
+  const handleSave = async () => {
+    if (!label.trim()) {
+      Alert.alert("Name required", "Please enter a name for this route.");
+      return;
+    }
+    setSaveStatus("saving");
+    try {
+      await saveRoute({
+        label: label.trim(),
+        stops,
+        mode,
+        journey_start_time: journeyStartTime,
+        journey_end_time: journeyEndTime,
+        total_distance: totalDistance,
+      });
+      setSaveStatus("saved");
+    } catch (err: any) {
+      setSaveStatus("error");
+      Alert.alert("Save failed", err.message ?? "Could not save route.");
+    }
+  };
 
   return (
     <Animated.View style={[styles.screen, { opacity: fadeAnim }]}>
@@ -178,6 +159,34 @@ const CompletionScreen = () => {
         {stops.map((stop, i) => (
           <StopSummaryCard key={`${stop.name}-${i}`} stop={stop} index={i} />
         ))}
+
+        <View style={styles.saveSection}>
+          <Text style={styles.saveSectionLabel}>Save this route</Text>
+          <TextInput
+            style={styles.labelInput}
+            placeholder="Name this route"
+            placeholderTextColor="#9ca3af"
+            value={label}
+            onChangeText={setLabel}
+            editable={saveStatus !== "saving" && saveStatus !== "saved"}
+            maxLength={60}
+          />
+          <TouchableOpacity
+            style={[
+              styles.saveBtn,
+              (saveStatus === "saving" || saveStatus === "saved") && styles.saveBtnDisabled,
+            ]}
+            onPress={handleSave}
+            disabled={saveStatus === "saving" || saveStatus === "saved"}
+          >
+            <Text style={styles.saveBtnText}>
+              {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save Route"}
+            </Text>
+          </TouchableOpacity>
+          {saveStatus === "error" && (
+            <Text style={styles.errorText}>Save failed. Try again.</Text>
+          )}
+        </View>
 
         <TouchableOpacity
           style={styles.newAdventureBtn}
@@ -259,84 +268,70 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginBottom: 16,
   },
-  stopCard: {
-    backgroundColor: "#f9fafb",
-    borderRadius: 12,
+  saveSection: {
+    marginTop: 24,
     padding: 16,
-    marginBottom: 12,
+    backgroundColor: Color.colorGhostwhite,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e5e7eb",
+    marginBottom: 16,
   },
-  stopCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  stopNumber: {
+  saveSectionLabel: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyBold,
     color: "#6b7280",
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
+    marginBottom: 12,
   },
-  badge: {
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  labelInput: {
+    height: 44,
+    borderWidth: 1.5,
+    borderColor: Color.colorDarkslateblue,
+    borderRadius: StyleVariable.radius200,
+    paddingHorizontal: 12,
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyRegular,
+    color: Color.colorGray,
+    backgroundColor: Color.colorWhite,
+    marginBottom: 12,
   },
-  badgeText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.bodyBold,
-    color: "#fff",
-    fontWeight: "700",
+  saveBtn: {
+    backgroundColor: Color.colorDarkslateblue,
+    borderRadius: StyleVariable.radius200,
+    paddingVertical: 12,
+    alignItems: "center",
   },
-  stopName: {
+  saveBtnDisabled: {
+    opacity: 0.5,
+  },
+  saveBtnText: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bodyBold,
-    color: Color.colorGray,
-    fontWeight: "700",
-    marginBottom: 4,
-  },
-  stopVibe: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.bodyRegular,
-    color: Color.colorDarkslateblue,
+    color: Color.colorGhostwhite,
     fontWeight: "600",
-    marginBottom: 8,
   },
-  expandedDetails: {
-    marginTop: 4,
-    gap: 4,
-    marginBottom: 8,
-  },
-  detailText: {
+  errorText: {
+    marginTop: 8,
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyRegular,
-    color: "#555",
-  },
-  expandHint: {
-    fontSize: 11,
-    fontFamily: FontFamily.bodyRegular,
-    color: "#9ca3af",
+    color: "#dc2626",
+    textAlign: "center",
   },
   newAdventureBtn: {
-    marginTop: 24,
-    backgroundColor: Color.colorDarkslateblue,
+    marginTop: 8,
+    borderWidth: 1.5,
+    borderColor: Color.colorDarkslateblue,
     borderRadius: StyleVariable.radius200,
     paddingVertical: 14,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   newAdventureBtnText: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bodyBold,
-    color: Color.colorGhostwhite,
+    color: Color.colorDarkslateblue,
     fontWeight: "600",
   },
 });

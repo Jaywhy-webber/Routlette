@@ -173,6 +173,7 @@ const NavigationScreen = () => {
     } else {
       navigation.navigate("CompletionScreen", {
         stops,
+        mode,
         journeyStartTime,
         totalDistance: newCumulative,
         actualPath: actualBreadcrumbs,
