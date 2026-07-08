@@ -197,7 +197,7 @@ def main():
         df = df[df["name"] != ""]
         df = df[df["rating"] > 0]
 
-        filename = "venues_new_test_2.csv"
+        filename = "venues.csv"
         df.to_csv(filename, index=False)
         print(f"\n Search complete! Saved {len(df)} unique venues to {filename}.")
     else:
