@@ -21,7 +21,7 @@ app = FastAPI()
 # Allows the React Native frontend to talk to this server
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8081", "http://10.0.2.2:8081", "http://192.168.1.12:8081"],
+    allow_origins=["http://localhost:5173", "http://localhost:8081", "http://10.0.2.2:8081", "http://192.168.1.11:8081"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -370,7 +370,7 @@ async def generate_route(
                 *[fetch_stop_reviews(client, s["place_id"]) for s in stops]
             )
         for stop, review in zip(stops, fetched_reviews):
-            stop["review_snippets"] = review
+            stop.get["review_snippets"] = review
 
     clues = await asyncio.gather(*[generate_clue(stop) for stop in stops])
     for stop, clue in zip(stops, clues):

@@ -6,4 +6,5 @@ export type RootStackParamList = {
   FilterScreen: { startLat?: number; startLng?: number } | undefined;
   NavigationScreen: { stops: Stop[]; mode: string; journeyStartTime: number; startLat: number; startLng: number };
   CompletionScreen: { stops: Stop[]; journeyStartTime: number; totalDistance: number };
+  actualPath?: { latitude: number; longitude: number }[];
 };

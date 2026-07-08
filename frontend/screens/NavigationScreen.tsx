@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  ScrollView,
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -65,6 +66,8 @@ const NavigationScreen = () => {
   const [cumulativeDistance, setCumulativeDistance] = React.useState(0);
   const [prevStopCoords, setPrevStopCoords] = React.useState({ lat: startLat, lng: startLng });
 
+  const [actualBreadcrumbs, setActualBreadcrumbs] = React.useState<{ latitude: number; longitude: number }[]>([]);
+
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const arrowRotation = React.useRef(new Animated.Value(0)).current;
   const locationSub = React.useRef<Location.LocationSubscription | null>(null);
@@ -104,6 +107,16 @@ const NavigationScreen = () => {
         const lng = loc.coords.longitude;
         setUserLat(lat);
         setUserLng(lng);
+
+        setActualBreadcrumbs((prev) => {
+          if (prev.length === 0) return [{ latitude: lat, longitude: lng }];
+
+          const lastCrumb = prev[prev.length - 1];
+          const gap = haversineMetres(lastCrumb.latitude, lastCrumb.longitude, lat, lng);
+
+          if (gap < 15) return prev; // If they haven't moved 15m yet, ignore duplicate noise
+          return [...prev, { latitude: lat, longitude: lng }];
+        });
 
         const dist = haversineMetres(lat, lng, currentStop.lat, currentStop.lng);
         setDistanceMetres(dist);
@@ -162,6 +175,7 @@ const NavigationScreen = () => {
         stops,
         journeyStartTime,
         totalDistance: newCumulative,
+        actualPath: actualBreadcrumbs,
       });
     }
   };
@@ -169,7 +183,12 @@ const NavigationScreen = () => {
   const badgeColor = CATEGORY_COLORS[currentStop.category] ?? Color.colorDarkslateblue;
 
   return (
-    <View style={styles.screen}>
+    <ScrollView
+      style={styles.scrollViewRoot}
+      contentContainerStyle={[styles.screen, { flexGrow: 1 }]} // 🔥 Added flexGrow: 1 here!
+      showsVerticalScrollIndicator={false}
+      bounces={true} // Allows nice spring, but won't violently snap back out of bounds
+    >
       <LogoHeader />
 
       <View style={styles.stopCounter}>
@@ -197,6 +216,12 @@ const NavigationScreen = () => {
       <Text style={styles.distanceText}>
         {distanceMetres !== null ? formatDistance(distanceMetres) : "Locating..."}
       </Text>
+
+      {!revealed ? (
+        <View style={styles.clueCardContainer}>
+          <Text style={styles.clueBodyText}>{currentStop.clue}</Text>
+        </View>
+      ) : null}
 
       <Animated.View style={[styles.revealCard, { opacity: fadeAnim }]}>
         <Text style={styles.revealLabel}>You made it!</Text>
@@ -227,6 +252,7 @@ const NavigationScreen = () => {
       <TouchableOpacity
         style={styles.skipBtn}
         onPress={() => {
+
           if (!revealed) {
             hasRevealedRef.current = true;
             setRevealed(true);
@@ -242,17 +268,21 @@ const NavigationScreen = () => {
       >
         <Text style={styles.skipBtnText}>{revealed ? "Skip to next" : "Skip (Test)"}</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
     backgroundColor: Color.colorWhite,
     paddingTop: StyleVariable.topPadding,
     paddingHorizontal: 24,
     alignItems: "center",
+    paddingBottom: 30,
+  },
+  scrollViewRoot: {
+    flex: 1,
+    backgroundColor: Color.colorWhite,
   },
   stopCounter: {
     flexDirection: "row",
@@ -379,6 +409,7 @@ const styles = StyleSheet.create({
   },
   skipBtn: {
     marginTop: 16,
+    marginBottom: 40,
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: StyleVariable.radius200,
@@ -418,6 +449,22 @@ const styles = StyleSheet.create({
     color: "#4b5563",
     lineHeight: 20,
     fontFamily: FontFamily.bodyRegular,
+  },
+  clueCardContainer: {
+    width: "100%",
+    backgroundColor: "#f0f2ff", // Light purple/blue tint background
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: "#bfc7eb", // Subtle purple border edge
+    marginBottom: 20,
+  },
+  clueBodyText: {
+    fontSize: 15,
+    color: "#374151",
+    lineHeight: 22,
+    fontFamily: FontFamily.bodyRegular,
+    textAlign: "left",
   },
 });
 

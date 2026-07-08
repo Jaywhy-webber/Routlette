@@ -22,7 +22,6 @@ ART_QUESTS = [
 
 SIDE_QUESTS = {
     "coffee_roastery": COFFEE_QUESTS,
-    "coffee_shop": COFFEE_QUESTS,
     "cafe": COFFEE_QUESTS,
 
     "food_court": [

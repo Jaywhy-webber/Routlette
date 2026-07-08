@@ -6,7 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
+  Dimensions,
 } from "react-native";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
@@ -71,10 +73,24 @@ function StopSummaryCard({ stop, index }: { stop: Stop; index: number }) {
 const CompletionScreen = () => {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProps>();
-  const { stops, journeyStartTime, totalDistance } = route.params;
+
+  const { stops, journeyStartTime, totalDistance, actualPath = [] } = route.params;
 
   const journeyDuration = Date.now() - journeyStartTime;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const mapRef = React.useRef<MapView | null>(null);
+
+  const defaultRegion = {
+    latitude: stops[0]?.lat ?? 1.2966,
+    longitude: stops[0]?.lng ?? 103.7764,
+    latitudeDelta: 0.025,
+    longitudeDelta: 0.025,
+  };
+
+  const stopCoordinates = stops.map(stop => ({
+    latitude: stop.lat,
+    longitude: stop.lng,
+  }));
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -82,7 +98,23 @@ const CompletionScreen = () => {
       duration: 600,
       useNativeDriver: true,
     }).start();
-  }, []);
+
+    if (mapRef.current) {
+      const allPointsToFrame = [...stopCoordinates, ...actualPath];
+
+      if (allPointsToFrame.length > 0) {
+        mapRef.current.fitToCoordinates(allPointsToFrame, {
+          edgePadding: {
+            top: 60,
+            right: 60,
+            bottom: 60,
+            left: 60
+          },
+          animated: true,
+        });
+      }
+    }
+  }, [actualPath, stops]);
 
   return (
     <Animated.View style={[styles.screen, { opacity: fadeAnim }]}>
@@ -101,6 +133,44 @@ const CompletionScreen = () => {
             <Text style={styles.statValue}>{formatDistance(totalDistance)}</Text>
             <Text style={styles.statLabel}>Distance Walked</Text>
           </View>
+        </View>
+
+        <View style={styles.mapFrame}>
+          <MapView
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            initialRegion={defaultRegion}
+            scrollEnabled={true}
+            zoomEnabled={true}
+            rotateEnabled={true}
+            pitchEnabled={true}
+          >
+
+            {actualPath.length > 1 && (
+              <Polyline
+                coordinates={actualPath}
+                strokeColor="#1a2b8a"
+                strokeWidth={5}
+              />
+            )}
+
+            {stops.map((stop, index) => {
+              let customPinColor = "#ef4444"; // red
+              if (index === 0) customPinColor = "#10b981"; // green
+              if (index === stops.length - 1) customPinColor = "#8b5cf6"; // purple
+
+              return (
+                <Marker
+                  key={index}
+                  coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+                  title={`Stop ${index + 1}: ${stop.name}`}
+                  description={stop.vibe}
+                  pinColor={customPinColor}
+                />
+              );
+            })}
+          </MapView>
         </View>
 
         <Text style={styles.sectionLabel}>Your Stops</Text>
@@ -168,6 +238,19 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyRegular,
     color: "#6b7280",
+  },
+  mapFrame: {
+    width: "100%",
+    height: Dimensions.get("window").height * 0.55,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: Color.colorDarkslateblue,
+    marginBottom: 32,
+  },
+  map: {
+    width: "100%",
+    height: "100%",
   },
   sectionLabel: {
     fontSize: FontSize.semi,
