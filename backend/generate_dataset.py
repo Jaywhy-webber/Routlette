@@ -21,6 +21,7 @@ FIELD_MASK = ",".join([
     "places.userRatingCount",
     "places.businessStatus",
     "places.regularOpeningHours",
+    "places.currentOpeningHours",
 ])
 
 # 1 search area for now to get a static dataset to work out filtering logic to reduce api calls
@@ -43,7 +44,37 @@ ACTIVITY_TYPES = [
     "cultural_center", "library", "amusement_center"
 ]
 
-# "hawker_centre" removed because it's unsupported in the New Places API
+
+async def fetch_robust_live_dataset(center_lat: float, center_lng: float, api_key: str, radius_m: int) -> pd.DataFrame:
+    # Temporarily override the global API key if passed down by main
+    global API_KEY
+    if api_key:
+        API_KEY = api_key
+
+    all_rows = []
+    seen_ids = set()
+
+    # Generate a tight dynamic local harvest grid centered exactly where the user is standing
+    # We step every 400m within a localized 1000m radius to catch hyper-local options
+    grid_points = generate_grid(center_lat, center_lng, total_radius_m=radius_m, step_size_m=400)
+
+    for grid_lat, grid_lng in grid_points:
+        # 1. Food Sweep
+        harvest_coordinate(grid_lat, grid_lng, radius=300, types=FOOD_TYPES,
+                           category_label="Food", seen_ids=seen_ids,
+                           all_rows=all_rows, neighborhood_label="Live_Query")
+
+        # 2. Activity Sweep
+        harvest_coordinate(grid_lat, grid_lng, radius=300, types=ACTIVITY_TYPES,
+                           category_label="Activity", seen_ids=seen_ids,
+                           all_rows=all_rows, neighborhood_label="Live_Query")
+
+    if not all_rows:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(all_rows)
+    df = df[(df["name"] != "") & (df["rating"] > 0)]
+    return df
 
 def parse_price_level(raw):
     mapping = {
@@ -80,8 +111,9 @@ def search_nearby(lat, lng, radius, place_types, label):
         print(f"ERROR {resp.status_code}: {resp.text}")
         return []
     places = resp.json().get("places", [])
-    print(f"{label}: got {len(places)} results")
-    return places
+    open_places = [place for place in places if place.get("currentOpeningHours", {}).get("openNow", True) is True and place.get("businessStatus") == "OPERATIONAL"]
+    print(f"{label}: got {len(places)} results total ({len(open_places)} are currently open)")
+    return open_places
 
 
 def generate_grid(center_lat, center_lng, total_radius_m, step_size_m=400):
@@ -169,39 +201,22 @@ def main():
     seen_ids = set()
 
     for (neighborhood, center_lat, center_lng, total_radius) in SEARCH_AREAS:
-        print(f"\n==========================================")
-        print(f"Generating harvest grid for: {neighborhood}")
-        print(f"==========================================")
+        grid_points = generate_grid(center_lat, center_lng, total_radius, step_size_m=400)  #
+        for grid_lat, grid_lng in grid_points:
+            harvest_coordinate(grid_lat, grid_lng, radius=300, types=FOOD_TYPES, category_label="Food",
+                               seen_ids=seen_ids, all_rows=all_rows, neighborhood_label=neighborhood)  #
+            harvest_coordinate(grid_lat, grid_lng, radius=300, types=ACTIVITY_TYPES, category_label="Activity",
+                               seen_ids=seen_ids, all_rows=all_rows, neighborhood_label=neighborhood)  #
 
-        grid_points = generate_grid(center_lat, center_lng, total_radius, step_size_m=400)
-        print(f"Base grid generated: Sweeping through {len(grid_points)} initial zones...\n")
-
-        for idx, (grid_lat, grid_lng) in enumerate(grid_points):
-            print(f"\n--- Sweeping Base Point {idx + 1}/{len(grid_points)} ({grid_lat:.4f}, {grid_lng:.4f}) ---")
-
-            # 1. Food Sweep (Starts at 300m radius, will auto-divide if it hits 20)
-            harvest_coordinate(grid_lat, grid_lng, radius=300, types=FOOD_TYPES,
-                               category_label="Food", seen_ids=seen_ids,
-                               all_rows=all_rows, neighborhood_label=neighborhood)
-            time.sleep(0.2)
-
-            # 2. Activity Sweep (Starts at 300m radius, will auto-divide if it hits 20)
-            harvest_coordinate(grid_lat, grid_lng, radius=300, types=ACTIVITY_TYPES,
-                               category_label="Activity", seen_ids=seen_ids,
-                               all_rows=all_rows, neighborhood_label=neighborhood)
-            time.sleep(0.2)
-
-    # Save data structure
     if all_rows:
         df = pd.DataFrame(all_rows)
-        df = df[df["name"] != ""]
-        df = df[df["rating"] > 0]
-
+        df = df[(df["name"] != "") & (df["rating"] > 0)]
         filename = "venues.csv"
         df.to_csv(filename, index=False)
         print(f"\n Search complete! Saved {len(df)} unique venues to {filename}.")
     else:
         print("\n No venues found.")
+
 
 if __name__ == "__main__":
     main()

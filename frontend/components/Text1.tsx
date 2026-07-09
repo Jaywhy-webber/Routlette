@@ -7,7 +7,7 @@ export type Text1Type = {
 };
 
 const Text1 = ({
-  text = "Tired of repetitive nights out?\n\nAll the ‘hidden gems’ you see online are somehow all crowded IRL?\n\nWant to have an adventure in Singapore?\n\nWelcome to Routlette! The first personal algorithmic route finder based on your preferences for an outing!",
+  text = "Tired of predictable nights out?\n\nAll the 'hidden gems' you see online somehow end up being crowded IRL?\n\nReady to experience Singapore like an unplanned game board?\n\nWelcome to Routlette! A blind adventure engine that maps out secret trails tailored completely to your mood.",
 }: Text1Type) => {
   return (
     <View style={styles.textWrapper}>

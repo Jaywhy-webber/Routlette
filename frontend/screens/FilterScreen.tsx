@@ -7,6 +7,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Modal,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -220,6 +221,19 @@ const FilterScreen = () => {
           <Text style={styles.generateBtnText}>Generate Route</Text>
         )}
       </TouchableOpacity>
+
+      <Modal transparent={true} animationType="fade" visible={loading}>
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color={Color.colorDarkslateblue} />
+            <Text style={styles.loadingTitle}>Mapping Your Adventure...</Text>
+            <Text style={styles.loadingSubtitle}>
+              This can take up to a minute. Please don't close the app!
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 };
@@ -317,6 +331,41 @@ content: {
     fontFamily: FontFamily.bodyBold,
     color: Color.colorGhostwhite,
     fontWeight: "600",
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)', // Dims out background inputs softly
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  loadingCard: {
+    backgroundColor: Color.colorWhite,
+    borderRadius: 16,
+    padding: 28,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  loadingTitle: {
+    fontSize: FontSize.semi,
+    fontFamily: FontFamily.bodyBold,
+    color: Color.colorGray,
+    fontWeight: "700",
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  loadingSubtitle: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyRegular,
+    color: "#6b7280",
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
 

@@ -10,6 +10,8 @@ from groq import AsyncGroq
 from dotenv import load_dotenv
 from filter import apply_filters
 from side_quests import get_side_quest
+from scoring import apply_sentiment_and_rank
+from generate_dataset import fetch_robust_live_dataset
 
 load_dotenv()
 groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
@@ -131,68 +133,6 @@ def get_vibe(primary_type) -> str:
     return VIBE_MAPPING.get(clean, "Other")
 
 
-PLACES_FIELD_MASK = (
-    "places.id,places.displayName,places.formattedAddress,"
-    "places.location,places.primaryType,places.rating,"
-    "places.userRatingCount,places.priceLevel,places.businessStatus"
-)
-
-
-async def fetch_live_venues(lat: float, lng: float, radius_m: int) -> pd.DataFrame:
-    url = "https://places.googleapis.com/v1/places:searchNearby"
-    headers = {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-        "X-Goog-FieldMask": PLACES_FIELD_MASK,
-    }
-
-    def build_body(types: list) -> dict:
-        return {
-            "includedTypes": types,
-            "maxResultCount": 20,
-            "locationRestriction": {
-                "circle": {
-                    "center": {"latitude": lat, "longitude": lng},
-                    "radius": float(radius_m),
-                }
-            },
-        }
-
-    def parse_places(data: dict, category: str) -> list:
-        rows = []
-        for p in data.get("places", []):
-            if p.get("businessStatus") != "OPERATIONAL":
-                continue
-            rows.append({
-                "place_id": p.get("id", ""),
-                "name": p.get("displayName", {}).get("text", ""),
-                "category": category,
-                "primary_type": p.get("primaryType", ""),
-                "address": p.get("formattedAddress", ""),
-                "lat": p.get("location", {}).get("latitude", 0.0),
-                "lng": p.get("location", {}).get("longitude", 0.0),
-                "price_level": PRICE_LEVEL_MAP.get(p.get("priceLevel", ""), 2),
-                "rating": p.get("rating", None),
-                "rating_count": p.get("userRatingCount", None),
-            })
-        return rows
-
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            food_resp, activity_resp = await asyncio.gather(
-                client.post(url, headers=headers, json=build_body(FOOD_TYPES)),
-                client.post(url, headers=headers, json=build_body(ACTIVITY_TYPES)),
-            )
-        rows = (
-            parse_places(food_resp.json(), "food")
-            + parse_places(activity_resp.json(), "activity")
-        )
-        return pd.DataFrame(rows) if rows else pd.DataFrame()
-    except Exception as e:
-        print(f"fetch_live_venues error: {e}")
-        return pd.DataFrame()
-
-
 async def fetch_stop_reviews(client: httpx.AsyncClient, place_id: str) -> str:
     try:
         url = f"https://places.googleapis.com/v1/places/{place_id}"
@@ -295,12 +235,14 @@ async def generate_route(
 ):
     # Run the filter pipeline: exclude bad types, enforce budget, clip by radius
     if USE_LIVE_API:
-        radius_m = WALKING_MAP[walking]
-        live_df = await fetch_live_venues(lat, lng, radius_m)
+        radius_m = WALKING_MAP.get(walking, 2000)
+        print(f"generate_dataset.py running: grid searching over {radius_m}m radius...")
+        live_df = await fetch_robust_live_dataset(lat, lng, GOOGLE_PLACES_API_KEY, radius_m)
         if live_df.empty:
-            return {"stops": [], "mode": mode, "error": "Could not fetch venues — check API key or try again."}
+            return {"stops": [], "mode": mode, "error": "No venues discovered via live harvesting sweep."}
         filtered = apply_filters(live_df, lat, lng, budget, "both", walking)
     else:
+        # fallback to using static venues.csv
         filtered = apply_filters(df, lat, lng, budget, "both", walking)
 
     if filtered.empty:
@@ -310,17 +252,41 @@ async def generate_route(
     filtered["vibe"] = filtered["primary_type"].apply(get_vibe)
 
     # Score each venue using gem scoring (rating quality + mystery) blended with mode randomness
-    filtered["score"] = filtered.apply(lambda row: score_venue(row, mode), axis=1)
+    # hard filters based on adventure modes
+    if mode == "safe":
+        food_mask = (filtered["category"] == "food") & (filtered["rating"] >= 4.3) & (filtered["rating_count"] >= 40) & (filtered["rating_count"] <= 500)
+        activity_mask = (filtered["category"] == "activity") & (filtered["rating"] >= 4.3) & (filtered["rating_count"] >= 40)
+        filtered = filtered[food_mask | activity_mask]
 
-    # Pick 2 distinct food vibes from the user's selection (guarantees variety across both food stops)
+    elif mode == "chaotic":
+        food_mask = (filtered["category"] == "food") & (filtered["rating"] >= 3.5) & (filtered["rating_count"] <= 100)
+        activity_mask = (filtered["category"] == "activity") & (filtered["rating"] >= 3.5) & (filtered["rating_count"] <= 500)
+        filtered = filtered[food_mask | activity_mask]
+
+    else:  # balanced
+        food_mask = (filtered["category"] == "food") & (filtered["rating"] >= 4.0) & (filtered["rating_count"] >= 15) & (filtered["rating_count"] <= 300)
+        activity_mask = (filtered["category"] == "activity") & (filtered["rating"] >= 4.0) & (filtered["rating_count"] >= 15) & (filtered["rating_count"] <= 600)
+        filtered = filtered[food_mask | activity_mask]
+
+    # fallback if no results
+    if filtered.empty:
+        print("Selection pool fell to 0. Relaxing constraints to recover data pools...")
+        backup_pool = live_df if (USE_LIVE_API and 'live_df' in locals() and not live_df.empty) else df
+        filtered = apply_filters(backup_pool, lat, lng, budget, "both", walking)
+        filtered["vibe"] = filtered["primary_type"].apply(get_vibe)
+        filtered = filtered[(filtered["rating"] >= 3.8)]  # Lower rating bar slightly to guarantee options
+
+    # calculate objective base scores
+    filtered["gem_score"] = filtered.apply(score_venue, axis=1)
+
+    # 2 distinct food vibes chosen randomly
     available_food_vibes = [v for v in food_vibes if v in FOOD_VIBES]
     if not available_food_vibes:
-        available_food_vibes = FOOD_VIBES  # fall back to all if selection was invalid
+        available_food_vibes = FOOD_VIBES
 
     if len(available_food_vibes) >= 2:
         food_vibe_1, food_vibe_2 = random.sample(available_food_vibes, 2)
     else:
-        # Only 1 vibe selected — use it for both food stops
         food_vibe_1 = food_vibe_2 = available_food_vibes[0]
 
     available_activity_vibes = [v for v in activity_vibes if v in ACTIVITY_VIBES]
@@ -329,7 +295,6 @@ async def generate_route(
 
     activity_vibe = random.choice(available_activity_vibes)
 
-    # Sequence: food (vibe 1) → activity → food (vibe 2)
     sequence = [
         ("food", food_vibe_1),
         ("activity", activity_vibe),
@@ -339,15 +304,33 @@ async def generate_route(
     stops = []
     remaining = filtered.copy()
     for cat, vibe in sequence:
-        # Try the target vibe first -> fall back to any venue in the category if no match
         pool = remaining[(remaining["category"] == cat) & (remaining["vibe"] == vibe)]
         if pool.empty:
             pool = remaining[remaining["category"] == cat]
         if pool.empty:
             continue
 
-        # Pick one of the top-5 scorers
-        pick = pool.nlargest(5, "score").sample(1).iloc[0]
+        # random results sampling
+        if mode == "safe":
+            # 1. top 4 candidates based on pure base scores
+            contenders = pool.nlargest(4, "gem_score")
+            # 2. sentiment analysis
+            ranked_pool = await apply_sentiment_and_rank(contenders, GOOGLE_PLACES_API_KEY)
+            # 3. chose randomly from top 2 results
+            pick = ranked_pool.nlargest(2, "final_combined_score").sample(1).iloc[0]
+
+        elif mode == "chaotic":
+            # complete randomness, skips sentiment analysis completely
+            pick = pool.sample(1).iloc[0]
+
+        else:  # balanced
+            # 1. top 4 candidates based on pure base scores
+            contenders = pool.nlargest(6, "gem_score")
+            # 2. sentiment analysis
+            ranked_pool = await apply_sentiment_and_rank(contenders, GOOGLE_PLACES_API_KEY)
+            # 3. chose randomly from top 4 results
+            pick = ranked_pool.nlargest(4, "final_combined_score").sample(1).iloc[0]
+
         stops.append({
             "place_id": str(pick["place_id"]) if "place_id" in pick.index else "",
             "name": pick["name"],
@@ -357,12 +340,46 @@ async def generate_route(
             "lat": float(pick["lat"]),
             "lng": float(pick["lng"]),
             "price_level": int(pick["price_level"]),
-            "score": round(float(pick["score"]), 3),
-            "review_snippets": pick["review_snippets"] if "review_snippets" in pick.index and pd.notna(pick.get("review_snippets")) else "",
+            "score": round(float(pick.get("final_combined_score", pick["gem_score"])), 3),
+            "review_snippets": pick["review_snippets"] if "review_snippets" in pick.index and pd.notna(
+                pick.get("review_snippets")) else "",
             "side_quest": get_side_quest(pick.get("primary_type", ""), pick["category"])
         })
-        # Remove selected venue so it won't be picked again
         remaining = remaining[remaining["name"] != pick["name"]]
+
+    # =========================================================================
+    # DIAGNOSTIC TABLE (TEMPORARY VERIFICATION)
+    # =========================================================================
+    print(f"\n==========================================================================")
+    print(f" RESULTS FOR ADVENTURE MODE: [{mode.upper()}]")
+    print(f"==========================================================================")
+
+    row_format = "{:<22} | {:<12} | {:<15} | {:<6} | {:<12} | {:<6}"
+    print(row_format.format("VENUE NAME", "CATEGORY", "VIBE BUCKET", "STARS", "REVIEW COUNT", "SCORE"))
+    print("-" * 82)
+
+    for s in stops:
+        final_score = s.get("score", "N/A")
+        matched_rows = filtered[filtered["name"] == s["name"]]
+        if not matched_rows.empty:
+            raw_row = matched_rows.iloc[0]
+            raw_rating = raw_row.get("rating", 0.0)
+            raw_count = raw_row.get("rating_count", 0)
+        else:
+            raw_rating, raw_count = "N/A", "N/A"
+
+        short_name = s["name"][:20] + "..." if len(s["name"]) > 20 else s["name"]
+
+        print(row_format.format(
+            short_name,
+            s["category"].capitalize(),
+            s["vibe"],
+            str(raw_rating),
+            str(raw_count),
+            str(final_score)
+        ))
+    print(f"==========================================================================\n")
+    # =========================================================================
 
     if USE_LIVE_API and stops:
         async with httpx.AsyncClient() as client:
@@ -370,7 +387,7 @@ async def generate_route(
                 *[fetch_stop_reviews(client, s["place_id"]) for s in stops]
             )
         for stop, review in zip(stops, fetched_reviews):
-            stop.get["review_snippets"] = review
+            stop["review_snippets"] = review
 
     clues = await asyncio.gather(*[generate_clue(stop) for stop in stops])
     for stop, clue in zip(stops, clues):
@@ -381,16 +398,11 @@ async def generate_route(
     return {"stops": stops, "mode": mode}
 
 
-def score_venue(row, mode: str) -> float:
+def score_venue(row) -> float:
     rating = float(row["rating"])  # guaranteed non-null by apply_filters
     rating_count = float(row["rating_count"]) if pd.notna(row.get("rating_count")) else 100.0
 
-    # Gem scoring from scoring.py:
     # rating_perf_score rewards quality above 4.0; mystery_score rewards lesser-known venues
     rating_perf_score = max(0.0, (rating - 4.0) / 1.0)
     mystery_score = max(0.0, min(1.0, 1.0 - ((rating_count - 10) / 290)))
-    gem_score = (rating_perf_score * 0.6) + (mystery_score * 0.4)
-
-    # Blend gem score with randomness — mode controls how much to trust quality vs surprise
-    rand_weight = {"safe": 0.2, "balanced": 0.5, "chaotic": 0.9}.get(mode, 0.5)
-    return gem_score * (1 - rand_weight) + random.random() * rand_weight
+    return (rating_perf_score * 0.6) + (mystery_score * 0.4)

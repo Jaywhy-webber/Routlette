@@ -88,16 +88,26 @@ const Dashboard = () => {
         <StatusBar />
         <LogoHeader />
 
-        <View style={styles.contentContainer}>
-          <Text1 />
-          <View style={styles.howItWorksCard}>
-            <TextContentTitle />
-          </View>
-          <Text style={styles.footerText}>
-            Routlette then algorithmically chooses 3 main food/activities
-            and generates a route between them!
-          </Text>
+      {/* 2. TEXT & CONTENT SECTION */}
+      <View style={styles.contentContainer}>
+        {/* We call Text1 with NO inner text props because it defaults inside its own file */}
+        <Text1 />
+
+        {/*
+          background stretches dynamically around the text instead clipping
+        */}
+        <View style={styles.howItWorksCard}>
+          <TextContentTitle />
         </View>
+
+        <Text style={styles.footerText}>
+          Routlette will immediately stitch together a mystery path consisting
+          of three distinct local spots. Follow your compass to track them down! The
+          exact names and addresses stay locked until you step within 50 meters!
+          Plus, arriving at each destination unlocks an optional, custom side quest
+          to truly immerse you in the space.
+        </Text>
+      </View>
 
         <View style={styles.centeredButtonContainer}>
           <ArrowForward
@@ -176,17 +186,24 @@ const Dashboard = () => {
   );
 };
 
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: Color.colorWhite,
   },
   dashboard: {
+    backgroundColor: Color.colorWhite,
     flex: 1,
+  },
+  dashboardScrollViewContent: {
     paddingHorizontal: 32,
     paddingTop: StyleVariable.topPadding,
     paddingBottom: 40,
+    alignItems: "stretch",
+    justifyContent: "flex-start",
   },
+
   contentContainer: {
     width: "100%",
   },
@@ -209,6 +226,7 @@ const styles = StyleSheet.create({
   centeredButtonContainer: {
     width: "100%",
     alignItems: "stretch",
+    justifyContent: "center",
     marginTop: 10,
     marginBottom: 20,
   },
