@@ -21,6 +21,7 @@ FIELD_MASK = ",".join([
     "places.userRatingCount",
     "places.businessStatus",
     "places.regularOpeningHours",
+    "places.currentOpeningHours",
 ])
 
 # 1 search area for now to get a static dataset to work out filtering logic to reduce api calls
@@ -110,8 +111,9 @@ def search_nearby(lat, lng, radius, place_types, label):
         print(f"ERROR {resp.status_code}: {resp.text}")
         return []
     places = resp.json().get("places", [])
-    print(f"{label}: got {len(places)} results")
-    return places
+    open_places = [place for place in places if place.get("currentOpeningHours", {}).get("openNow", True) is True and place.get("businessStatus") == "OPERATIONAL"]
+    print(f"{label}: got {len(places)} results total ({len(open_places)} are currently open)")
+    return open_places
 
 
 def generate_grid(center_lat, center_lng, total_radius_m, step_size_m=400):

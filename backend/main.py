@@ -254,28 +254,27 @@ async def generate_route(
     # Score each venue using gem scoring (rating quality + mystery) blended with mode randomness
     # hard filters based on adventure modes
     if mode == "safe":
-        filtered = filtered[
-            (filtered["rating"] >= 4.3) &
-            (filtered["rating_count"] >= 40) &
-            (filtered["rating_count"] <= 500)
-            ]
+        food_mask = (filtered["category"] == "food") & (filtered["rating"] >= 4.3) & (filtered["rating_count"] >= 40) & (filtered["rating_count"] <= 500)
+        activity_mask = (filtered["category"] == "activity") & (filtered["rating"] >= 4.3) & (filtered["rating_count"] >= 40)
+        filtered = filtered[food_mask | activity_mask]
+
     elif mode == "chaotic":
-        filtered = filtered[
-            (filtered["rating"] >= 3.5) &
-            (filtered["rating_count"] <= 100)
-            ]
+        food_mask = (filtered["category"] == "food") & (filtered["rating"] >= 3.5) & (filtered["rating_count"] <= 100)
+        activity_mask = (filtered["category"] == "activity") & (filtered["rating"] >= 3.5) & (filtered["rating_count"] <= 500)
+        filtered = filtered[food_mask | activity_mask]
+
     else:  # balanced
-        filtered = filtered[
-            (filtered["rating"] >= 4.0) &
-            (filtered["rating_count"] >= 15) &
-            (filtered["rating_count"] <= 300)
-            ]
+        food_mask = (filtered["category"] == "food") & (filtered["rating"] >= 4.0) & (filtered["rating_count"] >= 15) & (filtered["rating_count"] <= 300)
+        activity_mask = (filtered["category"] == "activity") & (filtered["rating"] >= 4.0) & (filtered["rating_count"] >= 15) & (filtered["rating_count"] <= 600)
+        filtered = filtered[food_mask | activity_mask]
 
     # fallback if no results
     if filtered.empty:
-        filtered = apply_filters(df if not USE_LIVE_API else live_df, lat, lng, budget, "both", walking)
+        print("Selection pool fell to 0. Relaxing constraints to recover data pools...")
+        backup_pool = live_df if (USE_LIVE_API and 'live_df' in locals() and not live_df.empty) else df
+        filtered = apply_filters(backup_pool, lat, lng, budget, "both", walking)
         filtered["vibe"] = filtered["primary_type"].apply(get_vibe)
-        filtered = filtered[(filtered["rating"] >= 4.0)]
+        filtered = filtered[(filtered["rating"] >= 3.8)]  # Lower rating bar slightly to guarantee options
 
     # calculate objective base scores
     filtered["gem_score"] = filtered.apply(score_venue, axis=1)

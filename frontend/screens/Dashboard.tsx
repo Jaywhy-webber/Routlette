@@ -40,8 +40,11 @@ const Dashboard = () => {
         </View>
 
         <Text style={styles.footerText}>
-          Routlette then algorithmically chooses 3 main food/activities
-          and generates a route between them!
+          Routlette will immediately stitch together a mystery path consisting
+          of three distinct local spots. Follow your compass to track them down! The
+          exact names and addresses stay locked until you step within 50 meters!
+          Plus, arriving at each destination unlocks an optional, custom side quest
+          to truly immerse you in the space.
         </Text>
       </View>
 

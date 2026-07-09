@@ -12,8 +12,8 @@ export type TextContentTitleType = {
 const TextContentTitle = ({
   align = "Center",
   hasSubtitle = true,
-  subtitle = "• enter your location\n• choose your preferences\n• budget\n• radius\n• food choices\n• type of activities\n• adventure mode",
-  title = "How Routlette works",
+  subtitle = "• Drop your starting coordinates\n• Adjust your ideal walking radius\n• Set your budget\n• Choose your preferred food & activity vibes\n• Select your adventure mode",
+  title = "How to play:",
 }: TextContentTitleType) => {
   return (
     <View style={styles.textContentTitle}>

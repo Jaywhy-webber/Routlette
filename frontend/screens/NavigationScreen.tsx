@@ -7,6 +7,7 @@ import {
   Animated,
   Alert,
   ScrollView,
+  Linking,
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -182,12 +183,27 @@ const NavigationScreen = () => {
 
   const badgeColor = CATEGORY_COLORS[currentStop.category] ?? Color.colorDarkslateblue;
 
+  const openInGoogleMaps = () => {
+    const query = encodeURIComponent(`${currentStop.name}, ${currentStop.address}`);
+    const url = `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${currentStop.lat},${currentStop.lng}`;
+
+    Linking.canOpenURL(url)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          Alert.alert("Error", "Cannot open Google Maps layout scheme.");
+        }
+      })
+      .catch((err) => console.error("An error occurred launching maps:", err));
+  };
+
   return (
     <ScrollView
       style={styles.scrollViewRoot}
-      contentContainerStyle={[styles.screen, { flexGrow: 1 }]} // 🔥 Added flexGrow: 1 here!
+      contentContainerStyle={[styles.screen, { flexGrow: 1 }]}
       showsVerticalScrollIndicator={false}
-      bounces={true} // Allows nice spring, but won't violently snap back out of bounds
+      bounces={true}
     >
       <LogoHeader />
 
@@ -225,8 +241,13 @@ const NavigationScreen = () => {
 
       <Animated.View style={[styles.revealCard, { opacity: fadeAnim }]}>
         <Text style={styles.revealLabel}>You made it!</Text>
-        <Text style={styles.revealName}>{currentStop.name}</Text>
+        <TouchableOpacity onPress={openInGoogleMaps} activeOpacity={0.7}>
+          <Text style={[styles.revealName, styles.clickableLink]}>
+            {currentStop.name}
+          </Text>
+        </TouchableOpacity>
         <Text style={styles.revealVibe}>{currentStop.vibe}</Text>
+        <Text style={styles.revealAddressText}>{currentStop.address}</Text>
         <View style={[styles.revealCategoryBadge, { backgroundColor: badgeColor }]}>
           <Text style={styles.revealCategoryText}>{currentStop.category.toUpperCase()}</Text>
         </View>
@@ -439,7 +460,7 @@ const styles = StyleSheet.create({
   questTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#d4a017", // Polished gold theme accent
+    color: "#d4a017",
     marginBottom: 6,
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -452,11 +473,11 @@ const styles = StyleSheet.create({
   },
   clueCardContainer: {
     width: "100%",
-    backgroundColor: "#f0f2ff", // Light purple/blue tint background
+    backgroundColor: "#f0f2ff",
     borderRadius: 16,
     padding: 20,
     borderWidth: 1.5,
-    borderColor: "#bfc7eb", // Subtle purple border edge
+    borderColor: "#bfc7eb",
     marginBottom: 20,
   },
   clueBodyText: {
@@ -465,6 +486,25 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontFamily: FontFamily.bodyRegular,
     textAlign: "left",
+  },
+  revealVibe: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyRegular,
+    color: Color.colorDarkslateblue,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  revealAddressText: {
+    fontSize: FontSize.sm,
+    fontFamily: FontFamily.bodyRegular,
+    color: "#6b7280",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  clickableLink: {
+    color: Color.colorDarkslateblue,
+    textDecorationLine: "underline",
   },
 });
 
