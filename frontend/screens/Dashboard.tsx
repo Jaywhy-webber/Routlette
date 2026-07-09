@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   Animated,
+  ScrollView
 } from "react-native";
 import { Image } from "expo-image";
 import { useNavigation } from "@react-navigation/native";
@@ -84,30 +85,33 @@ const Dashboard = () => {
 
   return (
     <View style={styles.root}>
-      <View style={styles.dashboard}>
+      <ScrollView
+        style={styles.dashboard}
+        contentContainerStyle={styles.dashboardScrollViewContent}
+      >
         <StatusBar />
         <LogoHeader />
 
-      {/* 2. TEXT & CONTENT SECTION */}
-      <View style={styles.contentContainer}>
-        {/* We call Text1 with NO inner text props because it defaults inside its own file */}
-        <Text1 />
+        {/* 2. TEXT & CONTENT SECTION */}
+        <View style={styles.contentContainer}>
+          {/* We call Text1 with NO inner text props because it defaults inside its own file */}
+          <Text1 />
 
-        {/*
-          background stretches dynamically around the text instead clipping
-        */}
-        <View style={styles.howItWorksCard}>
-          <TextContentTitle />
+          {/*
+            background stretches dynamically around the text instead clipping
+          */}
+          <View style={styles.howItWorksCard}>
+            <TextContentTitle />
+          </View>
+
+          <Text style={styles.footerText}>
+            Routlette will immediately stitch together a mystery path consisting
+            of three distinct local spots. Follow your compass to track them down! The
+            exact names and addresses stay locked until you step within 50 meters!
+            Plus, arriving at each destination unlocks an optional, custom side quest
+            to truly immerse you in the space.
+          </Text>
         </View>
-
-        <Text style={styles.footerText}>
-          Routlette will immediately stitch together a mystery path consisting
-          of three distinct local spots. Follow your compass to track them down! The
-          exact names and addresses stay locked until you step within 50 meters!
-          Plus, arriving at each destination unlocks an optional, custom side quest
-          to truly immerse you in the space.
-        </Text>
-      </View>
 
         <View style={styles.centeredButtonContainer}>
           <ArrowForward
@@ -122,7 +126,7 @@ const Dashboard = () => {
             onPress={() => navigation.navigate("LocationScreen")}
           />
         </View>
-      </View>
+      </ScrollView>
 
       {/* Avatar — fixed top right, outside scroll */}
       <TouchableOpacity
