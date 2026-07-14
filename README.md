@@ -6,26 +6,26 @@ NUS Orbital 2026 · Team Apollo 11 · Milestone 2
 
 ---
 
-## Table of Contents
+## Table of contents
 
-- [Team & Product](#team--product)
+- [Team & product](#team--product)
 - [Motivation](#motivation)
-- [Target Audience](#target-audience)
-- [User Stories](#user-stories)
-- [Tech Stack](#tech-stack)
-- [Data Model](#data-model)
-- [Quick Start](#quick-start)
-- [Running the App (No Dev Setup)](#running-the-app-no-dev-setup)
-- [API Reference](#api-reference)
-- [App Features](#app-features)
-- [Design System](#design-system)
-- [Development Plan](#development-plan)
-- [Software Engineering Practices](#software-engineering-practices)
+- [Target audience](#target-audience)
+- [User stories](#user-stories)
+- [Tech stack](#tech-stack)
+- [Data model](#data-model)
+- [Quick start](#quick-start)
+- [Running the app (no dev setup)](#running-the-app-no-dev-setup)
+- [API reference](#api-reference)
+- [App features](#app-features)
+- [Design system](#design-system)
+- [Development plan](#development-plan)
+- [Software engineering practices](#software-engineering-practices)
 - [Testing](#testing)
 
 ---
 
-## Team & Product
+## Team & product
 
 | Field | Detail |
 |-------|--------|
@@ -46,13 +46,13 @@ Routlette takes the opposite approach: it removes the decision rather than tryin
 
 ---
 
-## Target Audience
+## Target audience
 
 Routlette is built for Singaporeans stuck in the rut of routine weekends, who want a low-effort way to inject some spontaneity and exploration into their lives without having to do the planning themselves.
 
 ---
 
-## User Stories
+## User stories
 
 1. As a user looking to explore Singapore, I want to input my starting location, budget, and preferences so that I can generate a personalised exploration journey.
 2. As a user who wants to avoid decision fatigue, I want the system to automatically decide destinations for me so that I do not have to plan my outing.
@@ -67,7 +67,7 @@ Routlette is built for Singaporeans stuck in the rut of routine weekends, who wa
 
 ---
 
-## Tech Stack
+## Tech stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -80,7 +80,7 @@ Routlette is built for Singaporeans stuck in the rut of routine weekends, who wa
 
 ---
 
-## Data Model
+## Data model
 
 There's no database yet. The live route endpoint reads directly from `venues.csv`, a static, one-time export of 135 venues around the NUS area pulled from the Google Places API. The columns below are what the filter and scoring pipeline actually consume; this is the schema that will need to carry over once Supabase is wired in.
 
@@ -101,7 +101,7 @@ All 135 rows share the same neighbourhood value for now, which is fine while the
 
 ---
 
-## Quick Start
+## Quick start
 
 ### Backend
 
@@ -128,15 +128,15 @@ npx expo start --clear
 
 ### Testing on a physical device
 
-Find your machine's local IP with `ipconfig`, update `BASE_URL` in `frontend/services/api.ts` to `http://<your-ip>:8000`, and start the backend with `--host 0.0.0.0` so it's reachable on the local network. Windows Firewall sometimes blocks port 8000 on the first attempt — add an inbound rule if the phone can't connect.
+Find your machine's local IP with `ipconfig`, update `BASE_URL` in `frontend/services/api.ts` to `http://<your-ip>:8000`, and start the backend with `--host 0.0.0.0` so it's reachable on the local network. Windows Firewall sometimes blocks port 8000 on the first attempt; add an inbound rule if the phone can't connect.
 
 ---
 
-## Running the App (No Dev Setup)
+## Running the app (no dev setup)
 
 There's no published TestFlight or APK build yet, since Routlette hasn't been deployed anywhere outside the team's own machines. The only way to try it right now is through the Expo development server, which means someone on the team has to be running both the backend and frontend locally first.
 
-1. Whoever is hosting starts the backend with `--host 0.0.0.0` and the frontend with `npx expo start`, as described in Quick Start above.
+1. Whoever is hosting starts the backend with `--host 0.0.0.0` and the frontend with `npx expo start`, as described in Quick start above.
 2. Install Expo Go from the App Store or Play Store on the device you want to test from.
 3. Make sure that device is on the same Wi-Fi network as the host machine, then scan the QR code printed in the terminal after `npx expo start`.
 4. The app opens inside Expo Go. Generate a route as normal; it talks to the host's backend over the local network.
@@ -145,7 +145,7 @@ This only works on the same local network as the host, there's no public URL to 
 
 ---
 
-## API Reference
+## API reference
 
 ### `GET /`
 
@@ -194,7 +194,7 @@ gem_score         = (rating_perf_score × 0.6) + (mystery_score × 0.4)
 final_score       = gem_score × (1 - rand_weight) + random() × rand_weight
 ```
 
-The mystery score rewards venues with fewer reviews: a 4.6-star place with 12 reviews is a better candidate for a "hidden gem" than a 4.6-star place with 3,000. `rand_weight` is set by mode — 0.2 for Safe, 0.5 for Balanced, 0.9 for Chaotic — so Chaotic mode leans almost entirely on the dice roll rather than the rating.
+The mystery score rewards venues with fewer reviews: a 4.6-star place with 12 reviews is a better candidate for a "hidden gem" than a 4.6-star place with 3,000. `rand_weight` is set by mode: 0.2 for Safe, 0.5 for Balanced, 0.9 for Chaotic. Chaotic mode leans almost entirely on the dice roll rather than the rating.
 
 ### Vibe buckets
 
@@ -212,11 +212,11 @@ Each venue is mapped from its Google Places `primary_type` into one bucket. A ro
 
 ### Clue generation
 
-Once the three stops are sequenced, the backend fires off one Groq call per stop concurrently (`asyncio.gather`) and attaches the result to each stop as a `clue` field. Each prompt gets the stop's category, vibe, price level, and the venue's real name — marked as hidden context the model is told never to repeat. The call runs against `llama-3.3-70b-versatile` with `max_tokens=120` and `temperature=0.85`, high enough that the same stop rarely gets the same clue twice. If the call throws (timeout, rate limit, missing key) the stop falls back to a static clue keyed by its `(category, vibe)` pair, pulled from a small hand-written bank, so a route never ships without a hint.
+Once the three stops are sequenced, the backend fires off one Groq call per stop concurrently (`asyncio.gather`) and attaches the result to each stop as a `clue` field. Each prompt gets the stop's category, vibe, price level, and the venue's real name (marked as hidden context the model is told never to repeat). The call runs against `llama-3.3-70b-versatile` with `max_tokens=120` and `temperature=0.85`, high enough that the same stop rarely gets the same clue twice. If the call throws (timeout, rate limit, missing key) the stop falls back to a static clue keyed by its `(category, vibe)` pair, pulled from a small hand-written bank, so a route never ships without a hint.
 
 ---
 
-## App Features
+## App features
 
 The build covers five screens, plus two backend-only steps that sit between Filters and Navigation: Dashboard → Location → Filters → Route Generation → Clue Generation → Navigation → Completion.
 
@@ -310,7 +310,7 @@ Every option ships with a sensible default already selected, so a user who just 
 
 ---
 
-### 4. Route Generation
+### 4. Route generation
 
 #### Overview
 
@@ -339,7 +339,7 @@ There's nothing to show here since there's no screen, but the choices made in th
 
 ---
 
-### 5. Clue Generation
+### 5. Clue generation
 
 #### Overview
 
@@ -390,7 +390,7 @@ The call runs against `llama-3.3-70b-versatile` with `max_tokens=120` and `tempe
 
 #### Design & UX considerations
 
-Including the venue's real name as hidden context, rather than withholding it from the model entirely, gives it a sharper anchor for tone and detail; leak prevention now rests on the explicit instruction never to repeat the name, not on the model simply not knowing it. Folding in real review snippets on the live path pushes the same trade further: richer, more specific clues, at the cost of needing an equally explicit instruction not to quote them verbatim. The same per-stop shape — category, vibe, price level, plus whatever extra context happens to be available — is also what keeps the fallback bank simple, since a fallback only ever has to match a `(category, vibe)` pair.
+Including the venue's real name as hidden context, rather than withholding it from the model entirely, gives it a sharper anchor for tone and detail; leak prevention rests on the explicit instruction never to repeat the name, not on the model simply not knowing it. Folding in real review snippets on the live path pushes the same trade further: richer, more specific clues, at the cost of needing an equally explicit instruction not to quote them verbatim. The same per-stop shape (category, vibe, price level, plus whatever extra context is available) also keeps the fallback bank simple, since a fallback only ever has to match a `(category, vibe)` pair.
 
 ---
 
@@ -459,17 +459,17 @@ The loop described in the user stories is now implemented end to end:
 4. On arrival, the stop's name and details are revealed
 5. Repeat for the remaining stops, then show the Completion summary
 
-Two pieces from the original user stories are still open: rating a stop after visiting it, and saving a completed route for later. Both remain scoped as extension features (see Development Plan).
+Two pieces from the original user stories are still open: rating a stop after visiting it, and saving a completed route for later. Both remain scoped as extension features (see Development plan).
 
 ---
 
-## Design System
+## Design system
 
 ### Brand
 
-The wordmark replaces the diagonal stroke of the capital R with a dotted arrow, nodding to the navigation path users take through the app. Its hand-drawn, brushstroke quality is meant to signal that Routlette isn't a conventional maps app. It's built around spontaneity, not utility.
+The wordmark replaces the diagonal stroke of the capital R with a dotted arrow, nodding to the navigation path users take through the app. The hand-drawn brushstroke style sets it apart from navigation apps, which tend toward clean vector marks.
 
-The name itself is a portmanteau of "route" and "roulette": route for the wayfinding side of the app, roulette for the luck-based trust the user has to place in it, since any given stop might turn out to be a flop or a genuine hidden gem.
+The name is a portmanteau of "route" and "roulette": route for the wayfinding, roulette for the luck-based trust the user has to place in it, since any given stop might turn out to be a flop or a genuine hidden gem.
 
 ### Colour & typography
 
@@ -483,14 +483,13 @@ Typography is Inter throughout, at four sizes: 18–24px for section headings, 1
 
 ### Design principles
 
-- **Consistency**: one font family, five core colours, and a uniform border radius mean users never have to relearn visual conventions between screens.
-- **Minimalism**: flat design, no shadows or gradients, so attention stays on the instructions rather than the chrome around them.
+One font family, five core colours, and a uniform border radius mean users never have to relearn visual conventions between screens. Flat design with no shadows or gradients keeps attention on the instructions rather than the chrome around them.
 
 ### UI components and pages
 
 #### Forward navigation button
 
-A large, full-width button filled with the primary navy (`#1a2b8a`). The high contrast against the white background makes it the most visually dominant element on any given screen, drawing the eye to the primary action. The large tap target also reduces missed taps for someone using the app while walking.
+A large, full-width button filled with the primary navy (`#1a2b8a`). The high contrast against the white background makes it the most visually dominant element on any given screen. The large tap target reduces missed taps for someone using the app while walking.
 
 #### Back navigation button
 
@@ -502,9 +501,9 @@ The main point of user input, kept to a single scrollable screen rather than a m
 
 ---
 
-## Development Plan
+## Development plan
 
-Routlette is being built across three Orbital milestones. What follows is what shipped in Milestone 1, what's lined up next, and the reasoning behind a few of the bigger calls made along the way.
+Routlette is being built across three Orbital milestones.
 
 ### Milestone 1: shipped
 
@@ -544,7 +543,7 @@ Side quests between main stops, a user rating system that feeds back into future
 
 ---
 
-## Software Engineering Practices
+## Software engineering practices
 
 ### Version control & collaboration
 
