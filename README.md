@@ -141,7 +141,7 @@ There's no published TestFlight or APK build yet, since Routlette hasn't been de
 3. Make sure that device is on the same Wi-Fi network as the host machine, then scan the QR code printed in the terminal after `npx expo start`.
 4. The app opens inside Expo Go. Generate a route as normal; it talks to the host's backend over the local network.
 
-This only works on the same local network as the host — there's no public URL to share yet.
+This only works on the same local network as the host, there's no public URL to share yet. A standalone build (TestFlight for iOS, an APK for Android) is on the roadmap once the core feature set is locked.
 
 ---
 
@@ -212,48 +212,144 @@ Each venue is mapped from its Google Places `primary_type` into one bucket. A ro
 
 ### Clue generation
 
-Once the three stops are sequenced, the backend fires off one Groq call per stop concurrently (`asyncio.gather`) and attaches the result to each stop as a `clue` field. Each prompt gets the stop's category, vibe, and price level, plus the venue's real name — marked as hidden context the model is told never to repeat. The model is instructed to describe atmosphere and sensation rather than naming the venue or giving directions. If a call errors out, that stop falls back to a static clue keyed by `(category, vibe)`, so the journey never ships without a hint.
+Once the three stops are sequenced, the backend fires off one Groq call per stop concurrently (`asyncio.gather`) and attaches the result to each stop as a `clue` field. Each prompt gets the stop's category, vibe, price level, and the venue's real name — marked as hidden context the model is told never to repeat. The call runs against `llama-3.3-70b-versatile` with `max_tokens=120` and `temperature=0.85`, high enough that the same stop rarely gets the same clue twice. If the call throws (timeout, rate limit, missing key) the stop falls back to a static clue keyed by its `(category, vibe)` pair, pulled from a small hand-written bank, so a route never ships without a hint.
 
 ---
 
 ## App Features
 
-The build covers five screens, plus two backend-only steps: Dashboard → Location → Filters → Route Generation → Clue Generation → Navigation → Completion.
+The build covers five screens, plus two backend-only steps that sit between Filters and Navigation: Dashboard → Location → Filters → Route Generation → Clue Generation → Navigation → Completion.
 
 ### 1. Dashboard
 
-The landing screen leads with "Tired of repetitive nights out?", speaking directly to the decision-fatigue problem the app is solving. A "How it works" card gives a plain-language summary of the flow; a single "Start Adventure" button is the only call to action. `Dashboard.tsx` never calls the API — the first network request fires when Filters submits to `/generate-route`.
+#### Overview
+
+The landing screen leads with "Tired of repetitive nights out?", speaking directly to the decision-fatigue problem the app is solving.
+
+#### Architecture
+
+Component: `Dashboard.tsx`. Composed from three shared components: `LogoHeader`, `TextContentTitle` (the "How it works" card), and `ArrowForward` (the primary CTA button). No local state.
+
+#### Backend
+
+None. `Dashboard.tsx` never calls the API or touches `venues.csv`. The first network request in the whole flow fires when Filters submits to `/generate-route`.
+
+#### Key features
+
+- A "How it works" card gives a plain-language summary of the flow before the user commits to anything.
+- A single prominent "Start Adventure" button is the only call to action on the screen.
+
+#### Design & UX considerations
+
+There's nothing else competing for attention on the screen. One headline, one explainer, one button, so the very first thing a new user does is make a forward move rather than navigate a menu.
+
+---
 
 ### 2. Location
 
-`LocationScreen.tsx` requests GPS permission and the device's current position via `expo-location`, renders a `react-native-maps` MapView centred on that position, and overlays a Google Places autocomplete bar via `react-native-google-places-autocomplete`. A static centre pin sits over the map; the underlying Region updates as the user pans, and that Region is what gets passed forward to FilterScreen on confirm.
+#### Overview
 
-The lat and lng captured here become the query parameters on `/generate-route`, and the exact origin point `filter.py`'s `haversine()` function measures every venue against.
+Asks where the user is starting from, and this is now fully live rather than a UI-only placeholder.
+
+#### Architecture
+
+Component: `LocationScreen.tsx`. Requests GPS permission and the device's current position via `expo-location`, renders a `react-native-maps` MapView centred on that position, and overlays a Google Places autocomplete bar via `react-native-google-places-autocomplete`. A static centre pin sits over the map; the underlying Region updates as the user pans, and that Region is what gets passed forward to FilterScreen on confirm.
+
+#### Backend
+
+None directly, but what happens here sets up everything downstream. The lat and lng captured on this screen become the lat and lng query parameters on `/generate-route`, and the exact origin point `filter.py`'s `haversine()` function measures every venue against.
+
+#### Key features
+
+- Centres the map on the user's actual GPS position on load, rather than a fixed default.
+- A draggable map under a fixed centre pin, so the user can fine-tune their starting point without a separate "drop a pin" mode.
+- An address autocomplete bar for typing a starting point instead of panning to it.
+
+#### Design & UX considerations
+
+Defaulting to the user's real position rather than a fixed map centre removes a step most location pickers force on you. The autocomplete bar exists for the case where someone wants to set a future meetup point rather than their live location.
+
+---
 
 ### 3. Filters
 
-`FilterScreen.tsx` is the main point of user input, kept to a single scrollable screen. Built from two reusable pickers: `OptionRow` for single-select chips (budget, walking distance, mode) and `MultiSelectRow` for the two vibe pickers. Every option ships with a sensible default already selected.
+#### Overview
 
-The filter pipeline (`filter.py`) runs eight steps before scoring sees a venue:
+The main point of user input, deliberately kept to a single scrollable screen rather than a multi-step wizard, so all the choices are visible and adjustable at once before committing.
 
-1. Drop venue types that aren't adventure stops: `shopping_mall`, `barbecue_area`, `educational_institution`
-2. Coerce `price_level`, `rating`, and `rating_count` to numeric types
-3. Apply the budget filter; drop rows where `price_level` is null
-4. Apply the category filter
-5. Calculate haversine distance from the submitted coordinates to every remaining venue
-6. Apply the walking radius (slider 1–5 maps to 300m–2000m)
-7. Drop any row missing a name, coordinates, or rating
-8. Sort by distance ascending
+#### Architecture
+
+Component: `FilterScreen.tsx`. Built from two small reusable pickers: `OptionRow` for single-select chips (budget, walking distance, mode) and `MultiSelectRow` for the two vibe pickers. Every option ships with a sensible default already selected.
+
+#### Backend
+
+`filter.py`'s `apply_filters()`. Every selection on this screen runs through an eight-step pipeline before scoring ever sees a venue.
+
+1. Drop venue types that aren't adventure stops: `shopping_mall`, `barbecue_area`, and `educational_institution` are excluded outright.
+2. Coerce `price_level`, `rating`, and `rating_count` to numeric types, since the CSV pulled from Google Places mixes types across rows.
+3. Apply the budget filter. Keep `price_level` at or below the selected budget, and drop any row where `price_level` is missing, since there's no way to confirm it fits.
+4. Apply the category filter. The live route always passes "both" here, so this step mostly exists because `apply_filters()` is written to be reused for a single-category shortlist elsewhere.
+5. Calculate haversine distance from the submitted coordinates to every remaining venue.
+6. Apply the walking radius, mapped from the slider's 1–5 scale to 300–2000 metres through a fixed lookup table.
+7. Drop any row still missing a name, coordinates, or rating, since the app can't display or navigate to a stop without them.
+8. Sort what's left by distance, so the closest venues are first when scoring runs.
+
+Mode doesn't touch this pipeline. Safe, Balanced, and Chaotic get read later, by `score_venue()` in `main.py`, to decide how much randomness gets blended into the final score.
+
+#### Key features
+
+- Budget: single-select chip from $ to $$$$
+- Walking distance: single-select chip, presented as time (~3 to ~25 min) rather than metres, mapped internally to 300m–2000m
+- Food vibes: multi-select; the user is nudged to pick at least two for variety across food stops
+- Activity vibes: multi-select
+- Adventure mode: Safe, Balanced, or Chaotic, controlling how much the route leans on rating vs. randomness
+
+#### Design & UX considerations
+
+Every option ships with a sensible default already selected, so a user who just wants to mash the generate button can do that without configuring anything. The vibe pickers are multi-select because picking only one food vibe would break the two-different-buckets guarantee the route sequencer relies on.
+
+---
 
 ### 4. Route Generation
 
-No screen. Once `filter.py` hands back a shortlist, two things happen: gem scoring (see Scoring Logic), then sequencing. A route always runs food → activity → food, with the two food stops pulled from different vibe buckets. Each stop is chosen by sampling one venue at random from that category's top five scorers — not always the single highest — so identical filters still produce different routes.
+#### Overview
+
+There's no screen for this one. It's the gap between submitting Filters and landing on Navigation: a single `/generate-route` call that scores and sequences the three stops before anything is shown.
+
+#### Backend
+
+`score_venue()` and the sequencing logic inside `/generate-route`, both in `main.py`. Once `filter.py` hands back a shortlist, two things happen before a route is returned.
+
+Gem scoring first. Each venue gets a `rating_perf_score` of `max(0, rating - 4.0)`, which only starts counting once a venue clears a 4.0 baseline, and a `mystery_score` of `max(0, min(1, 1 - ((rating_count - 10) / 290)))`, which rewards venues with fewer reviews. Those combine as `gem_score = (rating_perf_score * 0.6) + (mystery_score * 0.4)`.
+
+Mode randomness next. `final_score = gem_score * (1 - rand_weight) + random.random() * rand_weight`, with `rand_weight` set to 0.2 for Safe, 0.5 for Balanced, 0.9 for Chaotic. On Chaotic, 90% of the score is a random roll, so the gem quality barely matters.
+
+Sequencing last. A route always runs food, then activity, then food, with the two food stops pulled from different vibe buckets so it never doubles up. Each stop is chosen by sampling one venue at random from that category's top five scorers, not always the top scorer, so identical filters still produce different routes.
+
+#### Key features
+
+- Gem score blends rating quality, capped below a 4.0 floor, with a review-count-based mystery score, so an unreviewed but mediocre venue still loses to a well-reviewed hidden gem.
+- Mode sets how much of the final score comes from `gem_score` versus a random roll: 20% random on Safe, 50% on Balanced, 90% on Chaotic.
+- Stops are sequenced food, then activity, then food, with the two food stops pulled from different vibe buckets.
+- Each stop is chosen by sampling one venue at random from that category's top five scorers rather than always taking the top scorer, so identical filters still produce different routes.
+
+#### Design & UX considerations
+
+There's nothing to show here since there's no screen, but the choices made in this step shape everything Navigation displays. Sampling from the top five rather than always picking rank one was a deliberate call to keep routes from feeling predictable on repeat use.
+
+---
 
 ### 5. Clue Generation
 
-No screen. One Groq call per stop, all fired at the same time via `asyncio.gather`. The model receives the venue's category, vibe, price level, and real name (as hidden context it's told never to repeat). On the live Google Places API path, up to three real review snippets per venue are also included for atmosphere. A hand-written fallback clue per `(category, vibe)` pair covers any failed call.
+#### Overview
 
-System message sent to the model:
+Another step with no screen of its own. Once Route Generation has picked and sequenced the three stops, one Groq call goes out per stop, all fired at once, and the results come back as a `clue` field on each stop object before the response is returned.
+
+#### Backend
+
+`generate_clue()` in `main.py`. Every call sends the same fixed system message plus a per-stop user message. The user message is built from the venue's category, vibe, price level, and real name (flagged as hidden context):
+
+System message:
 
 ```
 You are a mystery guide for a surprise adventure in Singapore. Your job is to write
@@ -263,22 +359,99 @@ for atmosphere and sensory detail — extract the feeling, not the facts. Never 
 the venue name or any navigational directions.
 ```
 
+User message, filled in per stop:
+
+```
+Write a clue for this stop:
+
+Venue name (hidden context only — do NOT reveal this in the clue): {name}
+Category: {category}
+Vibe: {vibe}
+Price level: {'$' * price_level}
+[review block, see below — only present on the live API path]
+
+Keep it to 2-3 sentences. Be mysterious and enticing. Do not name the venue, its street, or quote reviews verbatim.
+```
+
+When review snippets were fetched, this line is inserted ahead of the closing instruction:
+
+```
+Real visitor impressions (use these for atmosphere and sensory detail — do NOT quote directly or name the venue): {review_snippets}
+```
+
+The call runs against `llama-3.3-70b-versatile` with `max_tokens=120` and `temperature=0.85`, high enough that the same stop rarely gets the same clue twice. If the call throws (timeout, rate limit, missing key) the stop falls back to a static clue keyed by its `(category, vibe)` pair, pulled from a small hand-written bank, so a route never ships without a hint.
+
+#### Key features
+
+- A fixed system message sets the mystery-guide persona once; the user message changes by category, vibe, price level, and now the venue's real name, always flagged as hidden context the model is told not to repeat.
+- On the live API path, up to three real review snippets per venue are fetched first (`fetch_stop_reviews()`) and woven into the prompt as raw atmosphere, with an explicit instruction never to quote them back.
+- All three calls fire concurrently (`asyncio.gather`) rather than one after another, so clue generation doesn't add three separate round trips to route latency.
+- A hand-written fallback clue per `(category, vibe)` pair covers any failed call, so the feature degrades quietly instead of breaking the route.
+
+#### Design & UX considerations
+
+Including the venue's real name as hidden context, rather than withholding it from the model entirely, gives it a sharper anchor for tone and detail; leak prevention now rests on the explicit instruction never to repeat the name, not on the model simply not knowing it. Folding in real review snippets on the live path pushes the same trade further: richer, more specific clues, at the cost of needing an equally explicit instruction not to quote them verbatim. The same per-stop shape — category, vibe, price level, plus whatever extra context happens to be available — is also what keeps the fallback bank simple, since a fallback only ever has to match a `(category, vibe)` pair.
+
+---
+
 ### 6. Navigation
 
-`NavigationScreen.tsx` replaces the old static Results screen with a live, clue-by-clue reveal loop. Two pure helper functions — `haversineMetres()` and `bearingDegrees()` — compute live distance and direction from the user's current position to the active stop. `REVEAL_RADIUS_METRES = 50` decides when a stop counts as arrived. The compass arrow's screen angle is derived as `arrowAngle = (bearing - heading + 360) % 360` so it always points at the destination regardless of which way the phone is facing.
+#### Overview
 
-Key features:
-- A compass arrow that rotates in real time to point at the next stop, with live haversine distance shown underneath in kilometres
-- The destination's name stays hidden until the user is within the 50m reveal radius
-- A "Show hint" toggle lets the user peek at the AI-generated clue without giving away what it is
-- Arriving inside the radius swaps the arrow for a "You made it!" card with the stop's name, vibe, and category
-- A "Skip" button is available for testing the flow without walking the full distance
+Replaces the old static Results screen with a live, clue-by-clue reveal loop.
+
+#### Architecture
+
+Component: `NavigationScreen.tsx`. Two pure helper functions, `haversineMetres()` and `bearingDegrees()`, compute live distance and direction from the user's current coordinates to the active stop; a `REVEAL_RADIUS_METRES` constant (50) decides when a stop counts as "arrived". Heading comes from `Location.watchHeadingAsync`, and the arrow's screen angle is derived as `arrowAngle = (bearing - heading + 360) % 360` so it always points at the destination regardless of which way the phone is facing. Local state tracks the current stop index, live coordinates, heading, distance, whether the stop has been revealed, whether the hint is visible, and cumulative distance walked.
+
+#### Backend
+
+None beyond what `/generate-route` already returned. The scoring and sequencing that produced these stops, and the clue written for each one, already happened, covered under Route Generation and Clue Generation; this screen's job is to track the user's live position against coordinates it already has, not to call the API again.
+
+#### Key features
+
+- A compass arrow that rotates in real time to point at the next stop, with the live haversine distance shown underneath in kilometres.
+- The destination's name stays hidden until the user is within the 50m reveal radius.
+- A "Show hint" toggle lets the user peek at the stop's AI-generated clue beforehand without giving away what it is.
+- Arriving inside the radius swaps the arrow for a "You made it!" card with the stop's name, vibe, and category, plus an "I'm here — next stop!" button to advance.
+- A "Skip" button is available for testing the flow without actually walking the full distance.
+
+#### Design & UX considerations
+
+Hiding the name until arrival is the whole point of the app, so the compass-and-distance pairing had to give the user enough to navigate by without accidentally leaking the destination through, say, a map pin or street name. The hint toggle is opt-in rather than shown by default, so the surprise stays intact for anyone who doesn't want a preview.
+
+---
 
 ### 7. Completion
 
-`CompletionScreen.tsx` receives the full stop list plus journey total time and cumulative distance via navigation params, and renders each stop as a tap-to-expand card. The first stop starts expanded; the activity and second food stop start collapsed so the screen doesn't dump every address at once. A "Start a New Adventure" button returns to Dashboard.
+#### Overview
+
+Once all 3 stops are cleared, the journey closes on a summary screen.
+
+#### Architecture
+
+Component: `CompletionScreen.tsx`. Receives the full stop list plus the journey's total time and cumulative distance via navigation params from `NavigationScreen`, and renders each stop as a tap-to-expand card.
+
+#### Backend
+
+None beyond what `/generate-route` already returned. `CompletionScreen` doesn't make its own request; it renders the stop list, total time, and total distance that `NavigationScreen` already received and passes forward through navigation params.
+
+#### Key features
+
+- Total time and total distance walked across the route.
+- A tap-to-expand card per stop showing address and price level.
+- The activity and second food stop start collapsed, so the screen doesn't dump every address at once.
+- "Start a New Adventure" returns to the Dashboard to begin again.
+
+#### Design & UX considerations
+
+Collapsing two of the three stop cards by default keeps the summary scannable; the first stop stays expanded since it's the one most likely to be looked back on immediately after the walk.
+
+---
 
 ### In-journey flow
+
+The loop described in the user stories is now implemented end to end:
 
 1. Route is generated and sequenced; final destinations are not revealed
 2. A clue for the next stop is available behind a hint toggle
@@ -286,34 +459,52 @@ Key features:
 4. On arrival, the stop's name and details are revealed
 5. Repeat for the remaining stops, then show the Completion summary
 
+Two pieces from the original user stories are still open: rating a stop after visiting it, and saving a completed route for later. Both remain scoped as extension features (see Development Plan).
+
 ---
 
 ## Design System
 
 ### Brand
 
-The wordmark replaces the diagonal stroke of the capital R with a dotted arrow, nodding to the navigation path users take through the app. Its hand-drawn, brushstroke quality signals that Routlette isn't a conventional maps app — it's built around spontaneity, not utility.
+The wordmark replaces the diagonal stroke of the capital R with a dotted arrow, nodding to the navigation path users take through the app. Its hand-drawn, brushstroke quality is meant to signal that Routlette isn't a conventional maps app. It's built around spontaneity, not utility.
 
-The name is a portmanteau of "route" and "roulette": route for the wayfinding side of the app, roulette for the luck-based trust the user has to place in it.
+The name itself is a portmanteau of "route" and "roulette": route for the wayfinding side of the app, roulette for the luck-based trust the user has to place in it, since any given stop might turn out to be a flop or a genuine hidden gem.
 
 ### Colour & typography
 
 | Role | Value | Why |
 |------|-------|-----|
-| Primary | Deep slate blue `#1a2b8a` | Used for buttons, badges, links, and active states. Navy reads as trustworthy and intentional, which matters when the app is asking users to follow an unknown route |
-| Background | White `#ffffff` / Whitesmoke `#f5f5f5` | Two-tier background gives cards a sense of depth without borders or shadows |
+| Primary | Deep slate blue `#1a2b8a` | Used for buttons, badges, links, and active states. Chosen over a brighter accent because navy reads as trustworthy and intentional, which matters when the app is asking users to follow an unknown route |
+| Background | White `#ffffff` / Whitesmoke `#f5f5f5` | Two-tier background gives cards a sense of depth over the screen without needing borders or shadows |
 | Text | Near-black `#1e1e1e` | Softer than pure black, easier to read over long sessions |
 
-Typography is Inter throughout, at four sizes: 18–24px for section headings, 16px for body and labels, 13px for sublabels, 11–12px for micro text.
+Typography is Inter throughout, at four sizes: 18–24px for section headings, 16px for body and labels, 13px for sublabels, 11–12px for micro text. One typeface keeps the hierarchy resting on size and weight rather than font-switching.
 
 ### Design principles
 
-- **Consistency**: one font family, five core colours, and a uniform border radius mean users never have to relearn visual conventions between screens
-- **Minimalism**: flat design, no shadows or gradients, so attention stays on the instructions rather than the chrome around them
+- **Consistency**: one font family, five core colours, and a uniform border radius mean users never have to relearn visual conventions between screens.
+- **Minimalism**: flat design, no shadows or gradients, so attention stays on the instructions rather than the chrome around them.
+
+### UI components and pages
+
+#### Forward navigation button
+
+A large, full-width button filled with the primary navy (`#1a2b8a`). The high contrast against the white background makes it the most visually dominant element on any given screen, drawing the eye to the primary action. The large tap target also reduces missed taps for someone using the app while walking.
+
+#### Back navigation button
+
+Plain navy text with no fill, by contrast. That's deliberate: once a route is generated, the design nudges users to lean into it rather than second-guess and restart, while still leaving the back option available rather than removing it outright. Making the back action visually quiet, rather than invisible, is the balance being struck.
+
+#### Filter screen
+
+The main point of user input, kept to a single scrollable screen rather than a multi-step wizard. A strict top-to-bottom hierarchy lets users see every option at once and adjust freely before committing, which keeps the setup feeling lighter than its actual number of choices.
 
 ---
 
 ## Development Plan
+
+Routlette is being built across three Orbital milestones. What follows is what shipped in Milestone 1, what's lined up next, and the reasoning behind a few of the bigger calls made along the way.
 
 ### Milestone 1: shipped
 
@@ -321,7 +512,7 @@ Typography is Inter throughout, at four sizes: 18–24px for section headings, 1
 |------|-------------|
 | Backend | FastAPI app with CSV-based venue retrieval; filter pipeline (budget, walking radius, excluded place types, haversine distance); gem scoring engine blending rating quality, review-count mystery score, and mode-based randomness |
 | Routing logic | Vibe-based stop selection: two food stops guaranteed from different vibe buckets, plus one activity stop |
-| Frontend | 4-screen React Native app (Dashboard, Location, Filters, Results); multi-select vibe pickers; single-select budget/distance/mode chips; results rendered as venue cards |
+| Frontend | 4-screen React Native app (Dashboard, Location, Filters, Results); multi-select vibe pickers; single-select budget/distance/mode chips; results rendered as venue cards with name, vibe, address, and coordinates |
 | Integration | Frontend wired to the live backend, with no mock data in the current build |
 
 ### Milestone 2: in progress
@@ -334,21 +525,22 @@ Typography is Inter throughout, at four sizes: 18–24px for section headings, 1
 
 ### Final milestone: stretch goals
 
-Side quests between main stops, a user rating system that feeds back into future route scoring, and saved/shareable routes are scoped as extension features beyond the core experience.
+Side quests between main stops, a user rating system that feeds back into future route scoring, and saved/shareable routes are scoped as extension features beyond the core experience, to be tackled if the core loop is solid going into the final stretch.
 
 ### Notable decisions & trade-offs
 
+- A `USE_MOCK` flag in the API layer during early frontend work, so UI could be built and demoed before the backend was ready. Removed once the live backend was stable.
 - Walking distance is shown to users as time (~3 to ~25 min) rather than metres, since metres are a worse mental model for "how far am I willing to walk." Internally it still maps to a 300m–2000m scale.
-- Sentiment score in the offline pipeline is weighted 20% against an 80% gem score, so that review-text noise can't dominate a venue's ranking. This hasn't been merged into the live endpoint yet.
-- `scoring.py` is intentionally not imported into `main.py`, because it auto-executes a full scoring run at module load. The vibe mapping it depends on was duplicated into `main.py` instead of shared, to sidestep that side effect.
+- Sentiment score in the offline pipeline is weighted 20% against an 80% gem score, so that review-text noise can't dominate a venue's ranking. This hasn't been merged into the live endpoint yet (see Known issues / watch-outs).
+- `scoring.py` is intentionally not imported into `main.py`, because it auto-executes a full scoring run at module load. The vibe mapping it depends on was duplicated into `main.py` instead of shared, to sidestep that side effect rather than refactor it under deadline.
 
 ### Known issues / watch-outs
 
-- `scoring.py` runs `filter_and_score_gems()` at import time — never import it directly from the live app
-- `generate_dataset.py` hits the live Google Places API — do not re-run without intent, it costs quota
-- Physical-device testing needs `--host 0.0.0.0` on uvicorn and a manually updated `BASE_URL` in `api.ts`; easy to forget after switching networks
-- Windows Firewall can silently block port 8000 on first run
-- Clue generation needs a valid `GROQ_API_KEY` in `backend/.env`; without one, every stop quietly falls back to its static clue instead of erroring
+- `scoring.py` runs `filter_and_score_gems()` at import time, so never import it directly from the live app.
+- `generate_dataset.py` hits the live Google Places API, so don't re-run it without intent: it costs quota.
+- Physical-device testing needs `--host 0.0.0.0` on uvicorn and a manually updated `BASE_URL` in `api.ts`; easy to forget after switching networks.
+- Windows Firewall can silently block port 8000 on first run.
+- Clue generation needs a valid `GROQ_API_KEY` in `backend/.env`; without one, every stop quietly falls back to its static clue instead of erroring, which is by design but can look like the LLM integration isn't running if you're not aware of the fallback.
 
 ---
 
@@ -356,52 +548,56 @@ Side quests between main stops, a user rating system that feeds back into future
 
 ### Version control & collaboration
 
-The repo follows a feature-branch workflow on GitHub: `feature/livelocation` and `feature/navigation-system` were each built on their own branch and merged back into main once working. Commit messages follow a loose `feat:` / `fix:` convention, which keeps the history readable when tracing when a given screen actually landed.
+The repo follows a feature-branch workflow on GitHub: `feature/livelocation` and `feature/navigation-system` were each built on their own branch and merged back into main once working, rather than committed directly to main. Commit messages follow a loose `feat:` / `fix:` convention (e.g. `feat: replace ResultsScreen with compass-based NavigationScreen and CompletionScreen`), which keeps the history readable when tracing when a given screen actually landed.
 
 ### Testing approach
 
-There's no automated test suite yet. With a two-person team, the practical substitute has been each person manually exercising the other's feature on a physical device before merging.
+There's no automated test suite yet (see Testing). With a two-person team, the practical substitute has been each person manually exercising the other's feature on a physical device before merging, rather than a formal review process.
 
 ### Keeping main deployable
 
-Features are merged once they run end to end on a physical device, not just in the Expo web preview, since the GPS, compass heading, and live network calls don't behave identically across the three.
+Features are merged once they run end to end on a physical device, not just in the Expo web preview, since the GPS, compass heading, and live network calls don't behave identically across the three. This is informal rather than enforced by CI, which is the main gap between this and a production-grade workflow.
 
 ---
 
 ## Testing
 
+Routlette doesn't yet have an automated test suite. Testing so far has been manual, done alongside development each week. The table below is the actual record of issues surfaced and how they were resolved, pulled from the team's weekly project log.
+
 ### Issue log
 
 | Week | Area | Issue found | Resolution |
 |------|------|-------------|------------|
-| 0 | Backend setup | venv activation syntax differs between Windows and Mac | Documented both commands in the README |
+| 0 | Backend setup | venv activation syntax differs between Windows and Mac | Documented both commands in the README so either OS works without back-and-forth |
 | 0 | Git | Git identity not configured, first commit failed | Set up a feature-branch workflow and committer config before further work |
-| 1 | Backend env | No issue logged | Used `.env` for all API keys from the start |
+| 1 | Backend env | No issue logged this week | Used `.env` for all API keys from the start, to avoid an accidental commit of secrets |
 | 2 | Frontend scaffold | Node 24 incompatible with Expo SDK 52, plugin errors on start | Downgraded to Node 20 via nvm; documented the version requirement |
-| 2 | Dataset generation | Google Places API (New) uses a different endpoint and field-mask syntax; a single combined search hit the 20-result cap per area | Queried one place type at a time across the NUS area |
-| 3 | Filter pipeline | Walking distance in raw metres was confusing for users | Switched to time-based labels (~3–25 min) in the UI, kept metres internally |
-| 3 | Scoring engine | VADER sentiment returns 0 for venues with no review text, unfairly tanking their score | Defaulted empty-review venues to a neutral 0.5 sentiment |
+| 2 | Dataset generation | Google Places API (New) uses a different endpoint and field-mask syntax than the legacy API; a single combined search also hit the 20-result cap per area | Queried one place type at a time across the NUS area to stay under the cap and maximise venues collected per type |
+| 3 | Filter pipeline | Walking distance in raw metres was a confusing input for users | Switched to time-based labels (~3–25 min) in the UI, kept metres internally on a fixed 1–5 scale |
+| 3 | Scoring engine | VADER sentiment returns 0 for venues with no review text, which would unfairly tank their score | Defaulted empty-review venues to a neutral 0.5 sentiment instead of 0 |
 | 3 | Frontend / Expo | Expo SDK mismatch (52 vs. 54) caused plugin resolution errors | Emptied the plugins array and pinned the Node version that matches SDK 52 |
 
 ### Manual test checklist
 
+Cases to (re-)run before each milestone submission. Status reflects what's been verified manually as of this round of testing; this list should be updated as more Milestone 2 features land.
+
 | Test case | Expected behaviour | Status |
 |-----------|-------------------|--------|
-| Budget filter | Venues with `price_level` above the selected budget, or with a null `price_level`, are excluded | Verified |
+| Budget filter | Venues with `price_level` above the selected budget, or with a null `price_level`, are excluded from results | Verified |
 | Walking radius filter | Only venues within the haversine distance for the selected radius (300m–2000m) are returned | Verified |
 | Vibe diversity rule | Generated route always contains 2 food stops from different vibe buckets, plus 1 activity stop | Verified |
-| Mode randomness | Safe mode results stay close to top-rated gems run after run; Chaotic mode varies widely | Verified (spot-checked, not statistically measured) |
+| Mode randomness | Safe mode results stay close to top-rated gems run after run; Chaotic mode varies widely between runs with the same filters | Verified (spot-checked, not statistically measured) |
 | API parameter defaults | Calling `/generate-route` with no query params returns a valid route using NUS-area defaults | Verified |
 | Frontend ↔ backend integration | Filter selections on the Filters screen are reflected correctly on the Navigation screen | Verified |
 | Physical device connectivity | App reachable from a phone on the same network via `BASE_URL` + `--host 0.0.0.0` | Verified, firewall rule required on Windows |
 | Live GPS location input | Location screen returns the user's actual coordinates instead of the NUS default | Verified |
 | Sentiment-adjusted scoring on live route | `/generate-route` score reflects VADER sentiment, not just `gem_score` | Not yet implemented; pipeline exists offline only |
 | Clue-based navigation reveal | Stops are revealed one clue at a time, with the destination name hidden until the 50m arrival radius is reached | Verified |
-| Groq fallback | If the Groq call for a stop's clue fails, the static fallback clue for that stop's (category, vibe) pair is used | Verified (manual fallback test) |
+| Groq fallback | If the Groq call for a stop's clue fails, the static fallback clue for that stop's `(category, vibe)` pair is used instead of an error | Verified (manual fallback test) |
 | Saved routes | A completed route can be saved and reloaded later | Not yet implemented; pending Supabase integration |
 
 Total logged development time for Milestone 1: 84 hours across both team members, tracked weekly by task and category in the project log.
 
 ### User testing
 
-No structured user testing round has been run yet. Feedback so far has come from the two team members testing on their own devices during development. A short feedback round is planned for Milestone 2 or 3, once the Navigation and Completion screens have had more time in people's hands.
+No structured user testing round has been run yet. Feedback so far has come from the two team members testing on their own devices during development, not from people outside the team. A short feedback round, similar in spirit to a usability pass, is planned for Milestone 2 or 3, once the Navigation and Completion screens have had more time in people's hands. Until then, this section is a placeholder rather than a result.
