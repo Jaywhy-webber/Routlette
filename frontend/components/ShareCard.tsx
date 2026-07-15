@@ -178,8 +178,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   cardLogo: {
-    height: 80,
-    width: 140,
+    height: 90,
+    width: 160,
     marginBottom: 0,
     alignSelf: 'flex-start',
   },
@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   value: {
-    fontSize: 22,
+    fontSize: 20,
     color: '#fff',
     fontWeight: '800',
   },
