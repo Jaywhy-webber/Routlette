@@ -16,6 +16,7 @@ import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
 import { Stop } from "../services/api";
 import LogoHeader from "../components/LogoHeader";
+import { Ionicons } from "@expo/vector-icons";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "NavigationScreen">;
 type RouteProps = RouteProp<RootStackParamList, "NavigationScreen">;
@@ -24,6 +25,11 @@ const REVEAL_RADIUS_METRES = 50;
 const CATEGORY_COLORS: Record<string, string> = {
   food: "#d4a017",
   activity: "#2e7d32",
+};
+
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  food: "restaurant",
+  activity: "compass",
 };
 
 function haversineMetres(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -67,10 +73,13 @@ const NavigationScreen = () => {
   const [cumulativeDistance, setCumulativeDistance] = React.useState(0);
   const [prevStopCoords, setPrevStopCoords] = React.useState({ lat: startLat, lng: startLng });
 
-  const [actualBreadcrumbs, setActualBreadcrumbs] = React.useState<{ latitude: number; longitude: number }[]>([]);
+  const [actualBreadcrumbs, setActualBreadcrumbs] = React.useState<{ latitude: number; longitude: number }[]>(
+    [{ latitude: startLat, longitude: startLng }]
+  );
 
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const arrowRotation = React.useRef(new Animated.Value(0)).current;
+  const lastAngle = React.useRef(0);
   const locationSub = React.useRef<Location.LocationSubscription | null>(null);
   const headingSub = React.useRef<Location.LocationSubscription | null>(null);
   const hasRevealedRef = React.useRef(false);
@@ -142,9 +151,14 @@ const NavigationScreen = () => {
   React.useEffect(() => {
     if (userLat === null || userLng === null) return;
     const bearing = bearingDegrees(userLat, userLng, currentStop.lat, currentStop.lng);
-    const arrowAngle = (bearing - heading + 360) % 360;
+    const relative = (bearing - heading + 360) % 360;
+    let delta = relative - lastAngle.current;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    const next = lastAngle.current + delta;
+    lastAngle.current = next;
     Animated.timing(arrowRotation, {
-      toValue: arrowAngle,
+      toValue: next,
       duration: 200,
       useNativeDriver: true,
     }).start();
@@ -154,8 +168,8 @@ const NavigationScreen = () => {
     transform: [
       {
         rotate: arrowRotation.interpolate({
-          inputRange: [0, 360],
-          outputRange: ["0deg", "360deg"],
+          inputRange: [-7200, 7200],
+          outputRange: ["-7200deg", "7200deg"],
         }),
       },
     ],
@@ -167,7 +181,10 @@ const NavigationScreen = () => {
     const legDistance = haversineMetres(prevStopCoords.lat, prevStopCoords.lng, stopLat, stopLng);
     const newCumulative = cumulativeDistance + legDistance;
 
+    const updatedBreadcrumbs = [...actualBreadcrumbs, { latitude: stopLat, longitude: stopLng }];
+
     if (currentStopIndex < stops.length - 1) {
+      setActualBreadcrumbs(updatedBreadcrumbs);
       setCumulativeDistance(newCumulative);
       setPrevStopCoords({ lat: stopLat, lng: stopLng });
       setCurrentStopIndex(currentStopIndex + 1);
@@ -177,7 +194,7 @@ const NavigationScreen = () => {
         mode,
         journeyStartTime,
         totalDistance: newCumulative,
-        actualPath: actualBreadcrumbs,
+        actualPath: updatedBreadcrumbs,
       });
     }
   };
@@ -209,13 +226,14 @@ const NavigationScreen = () => {
       <LogoHeader />
 
       <View style={styles.stopCounter}>
-        <Text style={styles.stopCounterText}>
-          Stop {currentStopIndex + 1} of {stops.length}
-        </Text>
-        <View style={[styles.categoryBadge, { backgroundColor: badgeColor }]}>
-          <Text style={styles.categoryBadgeText}>
-            {currentStop.category.toUpperCase()}
-          </Text>
+        <Text style={styles.progressText}>Stop {currentStopIndex + 1} of {stops.length}</Text>
+        <View style={styles.categoryLabel}>
+          <Ionicons
+            name={CATEGORY_ICONS[currentStop.category] ?? "ellipse"}
+            size={18}
+            color={Color.colorGhostwhite}
+          />
+          <Text style={styles.categoryLabelText}>{currentStop.category}</Text>
         </View>
       </View>
 
@@ -249,8 +267,13 @@ const NavigationScreen = () => {
         </TouchableOpacity>
         <Text style={styles.revealVibe}>{currentStop.vibe}</Text>
         <Text style={styles.revealAddressText}>{currentStop.address}</Text>
-        <View style={[styles.revealCategoryBadge, { backgroundColor: badgeColor }]}>
-          <Text style={styles.revealCategoryText}>{currentStop.category.toUpperCase()}</Text>
+        <View style={[styles.categoryLabel, styles.revealCategoryIcon]}>
+          <Ionicons
+            name={CATEGORY_ICONS[currentStop.category] ?? "ellipse"}
+            size={20}
+            color={Color.colorGhostwhite}
+          />
+          <Text style={styles.categoryLabelText}>{currentStop.category}</Text>
         </View>
 
         {revealed && currentStop.side_quest ? (
@@ -264,32 +287,33 @@ const NavigationScreen = () => {
           <TouchableOpacity style={styles.arrivedBtn} onPress={handleArrived}>
             <Text style={styles.arrivedBtnText}>
               {currentStopIndex < stops.length - 1
-                ? "I'm here — next stop!"
-                : "I'm here — finish journey!"}
+                ? "Next stop"
+                : "Finish route"}
             </Text>
           </TouchableOpacity>
         )}
       </Animated.View>
 
-      <TouchableOpacity
-        style={styles.skipBtn}
-        onPress={() => {
-
-          if (!revealed) {
-            hasRevealedRef.current = true;
-            setRevealed(true);
-            Animated.timing(fadeAnim, {
-              toValue: 1,
-              duration: 800,
-              useNativeDriver: true,
-            }).start();
-          } else {
-            handleArrived();
-          }
-        }}
-      >
-        <Text style={styles.skipBtnText}>{revealed ? "Skip to next" : "Skip (Test)"}</Text>
-      </TouchableOpacity>
+      {__DEV__ && (
+        <TouchableOpacity
+          style={styles.skipBtn}
+          onPress={() => {
+            if (!revealed) {
+              hasRevealedRef.current = true;
+              setRevealed(true);
+              Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+              }).start();
+            } else {
+              handleArrived();
+            }
+          }}
+        >
+          <Text style={styles.skipBtnText}>{revealed ? "Skip to next" : "Skip (Test)"}</Text>
+        </TouchableOpacity>
+      )}
     </ScrollView>
   );
 };
@@ -313,22 +337,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
   },
-  stopCounterText: {
+  progressText: {
     fontSize: FontSize.semi,
     fontFamily: FontFamily.bodyBold,
+    fontWeight: "700",
     color: Color.colorGray,
-    fontWeight: "700",
-  },
-  categoryBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  categoryBadgeText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.bodyBold,
-    color: "#fff",
-    fontWeight: "700",
   },
   compassContainer: {
     width: 200,
@@ -377,11 +390,9 @@ const styles = StyleSheet.create({
   revealCard: {
     width: "100%",
     backgroundColor: Color.colorGhostwhite,
-    borderRadius: 16,
+    borderRadius: 0,
     padding: 24,
     alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: Color.colorDarkslateblue,
   },
   revealLabel: {
     fontSize: FontSize.base,
@@ -397,29 +408,29 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 6,
   },
-  revealVibe: {
-    fontSize: FontSize.base,
-    fontFamily: FontFamily.bodyRegular,
-    color: Color.colorDarkslateblue,
-    fontWeight: "600",
-    marginBottom: 10,
-  },
-  revealCategoryBadge: {
-    borderRadius: 4,
+  categoryLabel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: Color.colorDarkslateblue,
+    paddingVertical: 4,
     paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginBottom: 20,
+    borderRadius: 4,
   },
-  revealCategoryText: {
+  categoryLabelText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyBold,
-    color: "#fff",
-    fontWeight: "700",
+    color: Color.colorGhostwhite,
+    fontWeight: "600",
+    textTransform: "capitalize",
+  },
+  revealCategoryIcon: {
+    marginBottom: 20,
   },
   arrivedBtn: {
     width: "100%",
     backgroundColor: Color.colorDarkslateblue,
-    borderRadius: StyleVariable.radius200,
+    borderRadius: 4,
     paddingVertical: 14,
     alignItems: "center",
   },
@@ -446,17 +457,10 @@ const styles = StyleSheet.create({
   },
   questBox: {
     backgroundColor: "#ffffff",
-    borderRadius: 12,
+    borderRadius: 0,
     padding: 16,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
     width: "100%",
     marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   questTitle: {
     fontSize: 14,
@@ -475,10 +479,8 @@ const styles = StyleSheet.create({
   clueCardContainer: {
     width: "100%",
     backgroundColor: "#f0f2ff",
-    borderRadius: 16,
+    borderRadius: 0,
     padding: 20,
-    borderWidth: 1.5,
-    borderColor: "#bfc7eb",
     marginBottom: 20,
   },
   clueBodyText: {

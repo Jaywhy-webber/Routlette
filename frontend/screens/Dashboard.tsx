@@ -23,7 +23,7 @@ import { RootStackParamList } from "../types/navigation";
 import { signOut } from "../services/auth";
 import { supabase } from "../services/supabase";
 
-type NavProp = NativeStackNavigationProp<RootStackParamList, "ArrowForward">;
+type NavProp = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
 
 const AVATAR_SIZE = 34;
 const AVATAR_TOP = StyleVariable.topPadding + 14;

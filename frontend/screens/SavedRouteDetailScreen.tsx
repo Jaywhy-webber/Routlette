@@ -7,23 +7,20 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Location from "expo-location";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
 import LogoHeader from "../components/LogoHeader";
 import { StopSummaryCard } from "../components/StopSummaryCard";
-import { formatDuration, formatDistance } from "../utils/format";
+import { formatDuration, formatDistance, formatSavedAt } from "../utils/format";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "SavedRouteDetailScreen">;
 type RouteProps = RouteProp<RootStackParamList, "SavedRouteDetailScreen">;
-
-function formatSavedAt(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
 
 const SavedRouteDetailScreen = () => {
   const navigation = useNavigation<NavProp>();
@@ -31,8 +28,34 @@ const SavedRouteDetailScreen = () => {
   const { route: savedRoute } = route.params;
 
   const [loadingRerun, setLoadingRerun] = React.useState(false);
+  const mapRef = React.useRef<MapView | null>(null);
 
   const duration = savedRoute.journey_end_time - savedRoute.journey_start_time;
+
+  const stopCoordinates = savedRoute.stops.map((s) => ({
+    latitude: s.lat,
+    longitude: s.lng,
+  }));
+
+  const defaultRegion = {
+    latitude: savedRoute.stops[0]?.lat ?? 1.2966,
+    longitude: savedRoute.stops[0]?.lng ?? 103.7764,
+    latitudeDelta: 0.025,
+    longitudeDelta: 0.025,
+  };
+
+  const handleMapReady = () => {
+    const allPoints = [
+      ...stopCoordinates,
+      ...(savedRoute.actual_path ?? []),
+    ];
+    if (allPoints.length > 0) {
+      mapRef.current?.fitToCoordinates(allPoints, {
+        edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+        animated: true,
+      });
+    }
+  };
 
   const handleRerun = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -78,6 +101,41 @@ const SavedRouteDetailScreen = () => {
           <Text style={styles.statValue}>{formatDistance(savedRoute.total_distance)}</Text>
           <Text style={styles.statLabel}>Distance Walked</Text>
         </View>
+      </View>
+
+      <View style={styles.mapFrame}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          initialRegion={defaultRegion}
+          onMapReady={handleMapReady}
+          scrollEnabled
+          zoomEnabled
+          rotateEnabled
+          pitchEnabled
+        >
+          {savedRoute.actual_path && savedRoute.actual_path.length > 1 && (
+            <Polyline
+              coordinates={savedRoute.actual_path}
+              strokeColor="#1a2b8a"
+              strokeWidth={5}
+            />
+          )}
+          {savedRoute.stops.map((stop, index) => {
+            let pinColor = "#ef4444";
+            if (index === 0) pinColor = "#10b981";
+            if (index === savedRoute.stops.length - 1) pinColor = "#8b5cf6";
+            return (
+              <Marker
+                key={index}
+                coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+                title={`Stop ${index + 1}: ${stop.name}`}
+                description={stop.vibe}
+                pinColor={pinColor}
+              />
+            );
+          })}
+        </MapView>
       </View>
 
       <Text style={styles.sectionLabel}>Your Stops</Text>
@@ -136,7 +194,7 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: "row",
     backgroundColor: Color.colorGhostwhite,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 20,
     marginBottom: 32,
     alignItems: "center",
@@ -163,6 +221,19 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyRegular,
     color: "#6b7280",
+  },
+  mapFrame: {
+    width: "100%",
+    height: Dimensions.get("window").height * 0.45,
+    borderRadius: 10,
+    overflow: "hidden",
+    borderWidth: 1.5,
+    borderColor: Color.colorDarkslateblue,
+    marginBottom: 32,
+  },
+  map: {
+    width: "100%",
+    height: "100%",
   },
   sectionLabel: {
     fontSize: FontSize.semi,

@@ -6,33 +6,38 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { supabase } from "../services/supabase";
 import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
 import LogoHeader from "../components/LogoHeader";
-import { signIn } from "../services/auth";
 
-type NavProp = NativeStackNavigationProp<RootStackParamList, "LoginScreen">;
+type NavProp = NativeStackNavigationProp<RootStackParamList, "ForgotPasswordScreen">;
 
-const LoginScreen = () => {
+const ForgotPasswordScreen = () => {
   const navigation = useNavigation<NavProp>();
   const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [errorMsg, setErrorMsg] = React.useState("");
+  const [sent, setSent] = React.useState(false);
 
-  const handleSignIn = async () => {
-    setErrorMsg("");
+  const handleReset = async () => {
+    if (!email.trim()) {
+      Alert.alert("Email required", "Enter your account email.");
+      return;
+    }
     setLoading(true);
     try {
-      await signIn(email.trim(), password);
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) throw error;
+      setSent(true);
     } catch (err: any) {
-      setErrorMsg(err.message ?? "Sign in failed.");
+      Alert.alert("Error", err.message ?? "Could not send reset email.");
     } finally {
       setLoading(false);
     }
@@ -46,59 +51,46 @@ const LoginScreen = () => {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <LogoHeader />
 
-        <Text style={styles.heading}>Sign In</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#9ca3af"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoCorrect={false}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#9ca3af"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        {errorMsg !== "" && <Text style={styles.errorText}>{errorMsg}</Text>}
-
-        <TouchableOpacity
-          style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
-          onPress={handleSignIn}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={Color.colorGhostwhite} />
-          ) : (
-            <Text style={styles.primaryBtnText}>Sign In</Text>
-          )}
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backLink}>
+          <Text style={styles.backLinkText}>← Back</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.secondaryLink}
-          onPress={() => navigation.navigate("RegisterScreen")}
-        >
-          <Text style={styles.secondaryLinkText}>
-            Don't have an account? <Text style={styles.linkHighlight}>Register</Text>
-          </Text>
-        </TouchableOpacity>
+        <Text style={styles.heading}>Reset Password</Text>
 
-        <TouchableOpacity
-          style={styles.secondaryLink}
-          onPress={() => navigation.navigate("ForgotPasswordScreen")}
-        >
-          <Text style={styles.secondaryLinkText}>
-            <Text style={styles.linkHighlight}>Forgot password?</Text>
-          </Text>
-        </TouchableOpacity>
+        {sent ? (
+          <View style={styles.sentBox}>
+            <Text style={styles.sentText}>
+              Check your email — we sent you a password reset link.
+            </Text>
+            <TouchableOpacity style={styles.primaryBtn} onPress={() => navigation.goBack()}>
+              <Text style={styles.primaryBtnText}>Back to Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#9ca3af"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoCorrect={false}
+            />
+            <TouchableOpacity
+              style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
+              onPress={handleReset}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={Color.colorGhostwhite} />
+              ) : (
+                <Text style={styles.primaryBtnText}>Send Reset Email</Text>
+              )}
+            </TouchableOpacity>
+          </>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -113,6 +105,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: StyleVariable.topPadding,
     paddingBottom: 48,
+  },
+  backLink: {
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  backLinkText: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyRegular,
+    color: Color.colorDarkslateblue,
   },
   heading: {
     fontSize: FontSize.xl,
@@ -132,12 +133,6 @@ const styles = StyleSheet.create({
     color: Color.colorGray,
     backgroundColor: Color.colorWhite,
     marginBottom: 16,
-  },
-  errorText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.bodyRegular,
-    color: "#dc2626",
-    marginBottom: 12,
   },
   primaryBtn: {
     marginTop: 8,
@@ -160,19 +155,15 @@ const styles = StyleSheet.create({
     color: Color.colorGhostwhite,
     fontWeight: "600",
   },
-  secondaryLink: {
-    marginTop: 24,
-    alignItems: "center",
+  sentBox: {
+    gap: 24,
   },
-  secondaryLinkText: {
+  sentText: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bodyRegular,
-    color: "#6b7280",
-  },
-  linkHighlight: {
-    color: Color.colorDarkslateblue,
-    fontWeight: "600",
+    color: "#374151",
+    lineHeight: 22,
   },
 });
 
-export default LoginScreen;
+export default ForgotPasswordScreen;

@@ -44,6 +44,7 @@ const FOOD_VIBE_OPTIONS = [
   { value: "Fuel Stop", label: "Fuel Stop" },
   { value: "Quick & Local", label: "Quick & Local" },
   { value: "Main Event", label: "Main Event" },
+  { value: "Social Hour", label: "Social Hour" },
 ];
 
 const ACTIVITY_VIBE_OPTIONS = [
@@ -122,8 +123,10 @@ const FilterScreen = () => {
   const [budget, setBudget] = React.useState(2);
   const [walking, setWalking] = React.useState(5);
   const [mode, setMode] = React.useState("balanced");
+  const [numFood, setNumFood] = React.useState(2);
+  const [numActivities, setNumActivities] = React.useState(1);
   // Vibe selections — all enabled by default
-  const [foodVibes, setFoodVibes] = React.useState<string[]>(["Fuel Stop", "Quick & Local", "Main Event"]);
+  const [foodVibes, setFoodVibes] = React.useState<string[]>(["Fuel Stop", "Quick & Local", "Main Event", "Social Hour"]);
   const [activityVibes, setActivityVibes] = React.useState<string[]>(["Culture", "Outdoors", "Urban Adventure"]);
   const [loading, setLoading] = React.useState(false);
 
@@ -152,6 +155,8 @@ const FilterScreen = () => {
         mode,
         food_vibes: foodVibes,
         activity_vibes: activityVibes,
+        num_food: numFood,
+        num_activities: numActivities,
       });
 
       if (result.error || result.stops.length === 0) {
@@ -194,16 +199,30 @@ const FilterScreen = () => {
       <Text style={styles.label}>Walking Distance</Text>
       <OptionRow options={WALKING_OPTIONS} selected={walking} onSelect={setWalking} />
 
-      {/* Food vibes — multi-select, 2 different ones will be picked for the route */}
+      <Text style={styles.label}>Food Stops</Text>
+      <OptionRow
+        options={[{ value: 1, label: "1" }, { value: 2, label: "2" }, { value: 3, label: "3" }]}
+        selected={numFood}
+        onSelect={setNumFood}
+      />
+
+      {/* Food vibes — multi-select, different ones will be picked for each food stop */}
       <Text style={styles.label}>Food Vibes</Text>
-      <Text style={styles.sublabel}>Pick at least 2 for variety across your food stops</Text>
+      <Text style={styles.sublabel}>Each food stop will draw from a different vibe where possible</Text>
       <MultiSelectRow
         options={FOOD_VIBE_OPTIONS}
         selected={foodVibes}
         onToggle={(v) => toggleVibe(foodVibes, setFoodVibes, v)}
       />
 
-      {/* Activity vibes — multi-select, one will be picked for the activity stop */}
+      <Text style={styles.label}>Activity Stops</Text>
+      <OptionRow
+        options={[{ value: 1, label: "1" }, { value: 2, label: "2" }, { value: 3, label: "3" }]}
+        selected={numActivities}
+        onSelect={setNumActivities}
+      />
+
+      {/* Activity vibes — multi-select, one will be picked per activity stop */}
       <Text style={styles.label}>Activity Vibes</Text>
       <MultiSelectRow
         options={ACTIVITY_VIBE_OPTIONS}
@@ -341,7 +360,7 @@ content: {
   },
   loadingCard: {
     backgroundColor: Color.colorWhite,
-    borderRadius: 16,
+    borderRadius: 10,
     padding: 28,
     alignItems: 'center',
     width: '100%',

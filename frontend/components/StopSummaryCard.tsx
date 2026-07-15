@@ -1,16 +1,22 @@
 import * as React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Linking } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Color, FontFamily, FontSize } from "../GlobalStyles";
 import { Stop } from "../services/api";
 
-export const CATEGORY_COLORS: Record<string, string> = {
-  food: "#d4a017",
-  activity: "#2e7d32",
+const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  food: "restaurant",
+  activity: "compass",
 };
 
 export function StopSummaryCard({ stop, index }: { stop: Stop; index: number }) {
   const [expanded, setExpanded] = React.useState(false);
-  const badgeColor = CATEGORY_COLORS[stop.category] ?? Color.colorDarkslateblue;
+
+  const openInGoogleMaps = () => {
+    const query = encodeURIComponent(`${stop.name}, ${stop.address}`);
+    const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
+    Linking.openURL(url).catch(() => {});
+  };
 
   return (
     <TouchableOpacity
@@ -20,11 +26,18 @@ export function StopSummaryCard({ stop, index }: { stop: Stop; index: number }) 
     >
       <View style={styles.stopCardHeader}>
         <Text style={styles.stopNumber}>Stop {index + 1}</Text>
-        <View style={[styles.badge, { backgroundColor: badgeColor }]}>
-          <Text style={styles.badgeText}>{stop.category.toUpperCase()}</Text>
+        <View style={styles.badge}>
+          <Ionicons
+            name={CATEGORY_ICONS[stop.category] ?? "ellipse"}
+            size={13}
+            color={Color.colorGhostwhite}
+          />
+          <Text style={styles.badgeText}>{stop.category}</Text>
         </View>
       </View>
-      <Text style={styles.stopName}>{stop.name}</Text>
+      <TouchableOpacity onPress={openInGoogleMaps} activeOpacity={0.7}>
+        <Text style={styles.stopName}>{stop.name}</Text>
+      </TouchableOpacity>
       <Text style={styles.stopVibe}>{stop.vibe}</Text>
 
       {expanded && (
@@ -42,7 +55,7 @@ export function StopSummaryCard({ stop, index }: { stop: Stop; index: number }) 
 const styles = StyleSheet.create({
   stopCard: {
     backgroundColor: "#f9fafb",
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
@@ -63,22 +76,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Color.colorDarkslateblue,
     borderRadius: 4,
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
   badgeText: {
     fontSize: FontSize.sm,
     fontFamily: FontFamily.bodyBold,
-    color: "#fff",
-    fontWeight: "700",
+    color: Color.colorGhostwhite,
+    fontWeight: "600",
+    textTransform: "capitalize",
   },
   stopName: {
     fontSize: FontSize.base,
     fontFamily: FontFamily.bodyBold,
-    color: Color.colorGray,
+    color: Color.colorDarkslateblue,
     fontWeight: "700",
     marginBottom: 4,
+    textDecorationLine: "underline",
   },
   stopVibe: {
     fontSize: FontSize.sm,

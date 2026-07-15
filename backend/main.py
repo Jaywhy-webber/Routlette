@@ -1,6 +1,12 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Depends, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from starlette.requests import Request
+from typing import List, Literal
+import jwt as pyjwt
+from jwt import PyJWKClient
 import pandas as pd
 import random
 import os
@@ -8,7 +14,7 @@ import asyncio
 import httpx
 from groq import AsyncGroq
 from dotenv import load_dotenv
-from filter import apply_filters
+from filter import apply_filters, WALKING_MAP
 from side_quests import get_side_quest
 from scoring import apply_sentiment_and_rank
 from generate_dataset import fetch_robust_live_dataset
@@ -17,22 +23,45 @@ load_dotenv()
 groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
 USE_LIVE_API = os.getenv("USE_LIVE_API", "false").lower() == "true"
+SUPABASE_URL = os.getenv("SUPABASE_URL") or os.getenv("EXPO_PUBLIC_SUPABASE_URL")
+_jwks_client = PyJWKClient(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json") if SUPABASE_URL else None
 
 app = FastAPI()
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Allows the React Native frontend to talk to this server
+origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8081", "http://10.0.2.2:8081", "http://192.168.1.11:8081"],
+    allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def verify_token(authorization: str = Header(default=None)) -> str:
+    if not _jwks_client:
+        return "anonymous"
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    token = authorization.split(" ", 1)[1]
+    try:
+        signing_key = _jwks_client.get_signing_key_from_jwt(token)
+        payload = pyjwt.decode(
+            token, signing_key.key, algorithms=["HS256", "RS256", "ES256"], audience="authenticated"
+        )
+        return payload["sub"]
+    except pyjwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except pyjwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 # Load the CSV dataset once on startup
 df = pd.read_csv("venues.csv")
 
 # Vibe buckets available for each category
-FOOD_VIBES = ["Fuel Stop", "Quick & Local", "Main Event"]
+FOOD_VIBES = ["Fuel Stop", "Quick & Local", "Main Event", "Social Hour"]
 ACTIVITY_VIBES = ["Culture", "Outdoors", "Urban Adventure"]
 
 # Live API: broad search types that map to the above vibe buckets via VIBE_MAPPING
@@ -44,8 +73,6 @@ PRICE_LEVEL_MAP = {
     "PRICE_LEVEL_MODERATE": 2, "PRICE_LEVEL_EXPENSIVE": 3,
     "PRICE_LEVEL_VERY_EXPENSIVE": 4,
 }
-
-WALKING_MAP = {1: 300, 2: 600, 3: 1000, 4: 1500, 5: 2000}
 
 # Maps each Google Places primary_type to a vibe bucket
 VIBE_MAPPING = {
@@ -223,15 +250,19 @@ def root():
 
 
 @app.get("/generate-route")
+@limiter.limit("10/minute")
 async def generate_route(
+    request: Request,
     lat: float = Query(default=1.2966),
     lng: float = Query(default=103.7764),
     budget: int = Query(default=2, ge=1, le=4),
     walking: int = Query(default=5, ge=1, le=5),
-    mode: str = Query(default="balanced"),
-    # User-selected vibe buckets — repeated query params e.g. ?food_vibes=Fuel+Stop&food_vibes=Main+Event
+    mode: Literal["safe", "balanced", "chaotic"] = Query(default="balanced"),
     food_vibes: List[str] = Query(default=FOOD_VIBES),
     activity_vibes: List[str] = Query(default=ACTIVITY_VIBES),
+    num_food: int = Query(default=2, ge=1, le=3),
+    num_activities: int = Query(default=1, ge=1, le=3),
+    user_id: str = Depends(verify_token),
 ):
     # Run the filter pipeline: exclude bad types, enforce budget, clip by radius
     if USE_LIVE_API:
@@ -279,27 +310,29 @@ async def generate_route(
     # calculate objective base scores
     filtered["gem_score"] = filtered.apply(score_venue, axis=1)
 
-    # 2 distinct food vibes chosen randomly
-    available_food_vibes = [v for v in food_vibes if v in FOOD_VIBES]
-    if not available_food_vibes:
-        available_food_vibes = FOOD_VIBES
+    # Select distinct food vibes up to num_food (cycle if user picked fewer vibes than stops)
+    available_food_vibes = [v for v in food_vibes if v in FOOD_VIBES] or FOOD_VIBES
+    distinct_count = min(num_food, len(available_food_vibes))
+    selected_food_vibes = random.sample(available_food_vibes, distinct_count)
+    while len(selected_food_vibes) < num_food:
+        selected_food_vibes.append(random.choice(available_food_vibes))
 
-    if len(available_food_vibes) >= 2:
-        food_vibe_1, food_vibe_2 = random.sample(available_food_vibes, 2)
-    else:
-        food_vibe_1 = food_vibe_2 = available_food_vibes[0]
+    # Select activity vibes (repeats allowed across stops)
+    available_activity_vibes = [v for v in activity_vibes if v in ACTIVITY_VIBES] or ACTIVITY_VIBES
+    selected_activity_vibes = [random.choice(available_activity_vibes) for _ in range(num_activities)]
 
-    available_activity_vibes = [v for v in activity_vibes if v in ACTIVITY_VIBES]
-    if not available_activity_vibes:
-        available_activity_vibes = ACTIVITY_VIBES
-
-    activity_vibe = random.choice(available_activity_vibes)
-
-    sequence = [
-        ("food", food_vibe_1),
-        ("activity", activity_vibe),
-        ("food", food_vibe_2),
-    ]
+    # Interleave food and activity slots, food first: F-A-F-A-F-A...
+    food_slots = [("food", v) for v in selected_food_vibes]
+    activity_slots = [("activity", v) for v in selected_activity_vibes]
+    sequence = []
+    fi, ai = 0, 0
+    while fi < len(food_slots) or ai < len(activity_slots):
+        if fi < len(food_slots):
+            sequence.append(food_slots[fi])
+            fi += 1
+        if ai < len(activity_slots):
+            sequence.append(activity_slots[ai])
+            ai += 1
 
     stops = []
     remaining = filtered.copy()
@@ -346,40 +379,6 @@ async def generate_route(
             "side_quest": get_side_quest(pick.get("primary_type", ""), pick["category"])
         })
         remaining = remaining[remaining["name"] != pick["name"]]
-
-    # =========================================================================
-    # DIAGNOSTIC TABLE (TEMPORARY VERIFICATION)
-    # =========================================================================
-    print(f"\n==========================================================================")
-    print(f" RESULTS FOR ADVENTURE MODE: [{mode.upper()}]")
-    print(f"==========================================================================")
-
-    row_format = "{:<22} | {:<12} | {:<15} | {:<6} | {:<12} | {:<6}"
-    print(row_format.format("VENUE NAME", "CATEGORY", "VIBE BUCKET", "STARS", "REVIEW COUNT", "SCORE"))
-    print("-" * 82)
-
-    for s in stops:
-        final_score = s.get("score", "N/A")
-        matched_rows = filtered[filtered["name"] == s["name"]]
-        if not matched_rows.empty:
-            raw_row = matched_rows.iloc[0]
-            raw_rating = raw_row.get("rating", 0.0)
-            raw_count = raw_row.get("rating_count", 0)
-        else:
-            raw_rating, raw_count = "N/A", "N/A"
-
-        short_name = s["name"][:20] + "..." if len(s["name"]) > 20 else s["name"]
-
-        print(row_format.format(
-            short_name,
-            s["category"].capitalize(),
-            s["vibe"],
-            str(raw_rating),
-            str(raw_count),
-            str(final_score)
-        ))
-    print(f"==========================================================================\n")
-    # =========================================================================
 
     if USE_LIVE_API and stops:
         async with httpx.AsyncClient() as client:

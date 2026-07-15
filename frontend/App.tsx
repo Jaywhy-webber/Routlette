@@ -3,6 +3,7 @@ import { ActivityIndicator, View, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import Dashboard from "./screens/Dashboard";
 import LocationScreen from "./screens/LocationScreen";
@@ -11,10 +12,12 @@ import NavigationScreen from "./screens/NavigationScreen";
 import CompletionScreen from "./screens/CompletionScreen";
 import LoginScreen from "./screens/LoginScreen";
 import RegisterScreen from "./screens/RegisterScreen";
+import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import SavedRoutesScreen from "./screens/SavedRoutesScreen";
 import SavedRouteDetailScreen from "./screens/SavedRouteDetailScreen";
 import { RootStackParamList } from "./types/navigation";
 import { supabase } from "./services/supabase";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const AuthStack = createNativeStackNavigator<RootStackParamList>();
 const AppStack = createNativeStackNavigator<RootStackParamList>();
@@ -43,14 +46,16 @@ const App = () => {
   }
 
   return (
-    <SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ErrorBoundary>
+      <SafeAreaProvider>
       <NavigationContainer>
         {isAuthenticated ? (
           <AppStack.Navigator
-            initialRouteName="ArrowForward"
+            initialRouteName="Dashboard"
             screenOptions={{ headerShown: false }}
           >
-            <AppStack.Screen name="ArrowForward" component={Dashboard} />
+            <AppStack.Screen name="Dashboard" component={Dashboard} />
             <AppStack.Screen name="LocationScreen" component={LocationScreen} />
             <AppStack.Screen name="FilterScreen" component={FilterScreen} />
             <AppStack.Screen name="NavigationScreen" component={NavigationScreen} />
@@ -65,10 +70,13 @@ const App = () => {
           >
             <AuthStack.Screen name="LoginScreen" component={LoginScreen} />
             <AuthStack.Screen name="RegisterScreen" component={RegisterScreen} />
+            <AuthStack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} />
           </AuthStack.Navigator>
         )}
       </NavigationContainer>
-    </SafeAreaProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 };
 

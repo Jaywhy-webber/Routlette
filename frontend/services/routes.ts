@@ -9,6 +9,7 @@ type SaveRouteInput = {
   journey_start_time: number;
   journey_end_time: number;
   total_distance: number;
+  actual_path?: { latitude: number; longitude: number }[];
 };
 
 export async function saveRoute(input: SaveRouteInput): Promise<SavedRoute> {

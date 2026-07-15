@@ -10,4 +10,5 @@ export type SavedRoute = {
   journey_end_time: number;
   total_distance: number;
   saved_at: string;
+  actual_path?: { latitude: number; longitude: number }[];
 };

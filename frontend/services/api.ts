@@ -1,6 +1,6 @@
-// All calls to the FastAPI backend go through this
+import { supabase } from "./supabase";
 
-const BASE_URL = "https://footrest-slimness-corrosive.ngrok-free.dev";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type Stop = {
   name: string;
@@ -29,6 +29,8 @@ export type FilterParams = {
   mode: string;
   food_vibes: string[];
   activity_vibes: string[];
+  num_food: number;
+  num_activities: number;
 };
 
 export async function generateRoute(params: FilterParams): Promise<RouteResponse> {
@@ -41,6 +43,9 @@ export async function generateRoute(params: FilterParams): Promise<RouteResponse
   url.searchParams.append("walking", String(params.walking));
   url.searchParams.append("mode", params.mode);
 
+  url.searchParams.append("num_food", String(params.num_food));
+  url.searchParams.append("num_activities", String(params.num_activities));
+
   // Append array params — FastAPI reads repeated keys as a List[str]
   params.food_vibes.forEach((v) => url.searchParams.append("food_vibes", v));
   params.activity_vibes.forEach((v) => url.searchParams.append("activity_vibes", v));
@@ -49,8 +54,15 @@ export async function generateRoute(params: FilterParams): Promise<RouteResponse
   const timeout = setTimeout(() => controller.abort(), 120000);
 
   try {
-    const res = await fetch(url.toString(), { signal: controller.signal });
-    if (!res.ok) throw new Error(`Backend error: ${res.status}`);
+    const { data: { session } } = await supabase.auth.getSession();
+    const headers: Record<string, string> = {};
+    if (session) headers["Authorization"] = `Bearer ${session.access_token}`;
+
+    const res = await fetch(url.toString(), { signal: controller.signal, headers });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      throw new Error(body?.detail ?? `Backend error: ${res.status}`);
+    }
     return res.json();
   } catch (error: any) {
     if (error.name === 'AbortError') {

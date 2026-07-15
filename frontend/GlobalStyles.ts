@@ -21,7 +21,7 @@ export const Color = {
 };
 /* Style Variables */
 export const StyleVariable = {
-  radius200: 8,
+  radius200: 6,
   space200: 8,
   space300: 12,
   topPadding: 40,

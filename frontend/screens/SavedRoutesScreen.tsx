@@ -7,7 +7,10 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
@@ -15,32 +18,34 @@ import { RootStackParamList } from "../types/navigation";
 import { SavedRoute } from "../types/savedRoute";
 import LogoHeader from "../components/LogoHeader";
 import { getSavedRoutes, deleteRoute } from "../services/routes";
-import { formatDuration, formatDistance } from "../utils/format";
+import { formatDuration, formatDistance, formatSavedAt } from "../utils/format";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "SavedRoutesScreen">;
-
-function formatSavedAt(iso: string): string {
-  const date = new Date(iso);
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
 
 const SavedRoutesScreen = () => {
   const navigation = useNavigation<NavProp>();
   const [routes, setRoutes] = React.useState<SavedRoute[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const fetchRoutes = async () => {
+    try {
+      const data = await getSavedRoutes();
+      setRoutes(data);
+    } catch (err: any) {
+      Alert.alert("Error", err.message ?? "Could not load saved routes.");
+    }
+  };
 
   React.useEffect(() => {
-    (async () => {
-      try {
-        const data = await getSavedRoutes();
-        setRoutes(data);
-      } catch (err: any) {
-        Alert.alert("Error", err.message ?? "Could not load saved routes.");
-      } finally {
-        setLoading(false);
-      }
-    })();
+    fetchRoutes().finally(() => setLoading(false));
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchRoutes();
+    setRefreshing(false);
+  };
 
   const handleDelete = async (id: string) => {
     Alert.alert("Delete Route", "Remove this saved route?", [
@@ -61,7 +66,11 @@ const SavedRoutesScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+    >
       <LogoHeader />
 
       <View style={styles.headerRow}>
@@ -82,34 +91,40 @@ const SavedRoutesScreen = () => {
       {routes.map((route) => {
         const duration = route.journey_end_time - route.journey_start_time;
         return (
-          <TouchableOpacity
+          <Swipeable
             key={route.id}
-            style={styles.card}
-            onPress={() => navigation.navigate("SavedRouteDetailScreen", { route })}
-            activeOpacity={0.85}
+            renderRightActions={() => (
+              <TouchableOpacity
+                style={styles.swipeDeleteAction}
+                onPress={() => handleDelete(route.id)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="trash-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            )}
+            overshootRight={false}
           >
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardLabel}>{route.label}</Text>
-              <View style={styles.stopsBadge}>
-                <Text style={styles.stopsBadgeText}>3 stops</Text>
-              </View>
-            </View>
-
-            <Text style={styles.cardDate}>{formatSavedAt(route.saved_at)}</Text>
-
-            <View style={styles.statsRow}>
-              <Text style={styles.statText}>{formatDuration(duration)}</Text>
-              <Text style={styles.statDivider}>·</Text>
-              <Text style={styles.statText}>{formatDistance(route.total_distance)}</Text>
-            </View>
-
             <TouchableOpacity
-              style={styles.deleteBtn}
-              onPress={() => handleDelete(route.id)}
+              style={styles.card}
+              onPress={() => navigation.navigate("SavedRouteDetailScreen", { route })}
+              activeOpacity={0.85}
             >
-              <Text style={styles.deleteBtnText}>Delete</Text>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardLabel}>{route.label}</Text>
+                <View style={styles.stopsBadge}>
+                  <Text style={styles.stopsBadgeText}>{route.stops.length} stops</Text>
+                </View>
+              </View>
+
+              <Text style={styles.cardDate}>{formatSavedAt(route.saved_at)}</Text>
+
+              <View style={styles.statsRow}>
+                <Text style={styles.statText}>{formatDuration(duration)}</Text>
+                <Text style={styles.statDivider}>·</Text>
+                <Text style={styles.statText}>{formatDistance(route.total_distance)}</Text>
+              </View>
             </TouchableOpacity>
-          </TouchableOpacity>
+          </Swipeable>
         );
       })}
     </ScrollView>
@@ -160,7 +175,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "#f9fafb",
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
@@ -212,20 +227,13 @@ const styles = StyleSheet.create({
   statDivider: {
     color: "#d1d5db",
   },
-  deleteBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: StyleVariable.radius200,
-    borderWidth: 1,
-    borderColor: "#fca5a5",
-    backgroundColor: "#fff1f2",
-  },
-  deleteBtnText: {
-    fontSize: FontSize.sm,
-    fontFamily: FontFamily.bodyRegular,
-    color: "#dc2626",
-    fontWeight: "600",
+  swipeDeleteAction: {
+    backgroundColor: "#dc2626",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 72,
+    borderRadius: 8,
+    marginBottom: 12,
   },
 });
 

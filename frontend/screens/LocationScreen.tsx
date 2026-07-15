@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
   },
   autocompleteListView: {
     backgroundColor: Color.colorWhite,
-    borderRadius: 8,
+    borderRadius: 6,
     marginTop: 4,
     borderWidth: 1,
     borderColor: "#e5e7eb",
