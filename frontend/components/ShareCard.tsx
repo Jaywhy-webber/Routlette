@@ -18,6 +18,8 @@ interface StopDetail {
   address: string;
   category: string;
   vibe: string;
+  lat: number;
+  lng: number;
 }
 
 interface ShareCardProps {
@@ -71,6 +73,18 @@ const ShareCard: React.FC<ShareCardProps> = ({
 
   if (!trailCoordinates || trailCoordinates.length === 0) return null;
 
+  const minLat = Math.min(...trailCoordinates.map(c => c.latitude));
+  const maxLat = Math.max(...trailCoordinates.map(c => c.latitude));
+  const minLng = Math.min(...trailCoordinates.map(c => c.longitude));
+  const maxLng = Math.max(...trailCoordinates.map(c => c.longitude));
+  const PADDING = 1.5;
+  const trailRegion = {
+    latitude: (minLat + maxLat) / 2,
+    longitude: (minLng + maxLng) / 2,
+    latitudeDelta: Math.max((maxLat - minLat) * PADDING, 0.005),
+    longitudeDelta: Math.max((maxLng - minLng) * PADDING, 0.005),
+  };
+
   return (
     <View style={styles.container}>
       <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 0.95 }}>
@@ -80,16 +94,11 @@ const ShareCard: React.FC<ShareCardProps> = ({
             provider={PROVIDER_GOOGLE}
             style={StyleSheet.absoluteFillObject}
             liteMode={true}
-            initialRegion={{
-              latitude: trailCoordinates[0].latitude,
-              longitude: trailCoordinates[0].longitude,
-              latitudeDelta: 0.02,
-              longitudeDelta: 0.02,
-            }}
+            initialRegion={trailRegion}
           >
             <Polyline
               coordinates={trailCoordinates}
-              strokeColor="#1d4ed8"
+              strokeColor="#1a2b8a"
               strokeWidth={5}
             />
 

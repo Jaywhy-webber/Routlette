@@ -8,16 +8,19 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Modal,
 } from "react-native";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as Location from "expo-location";
-import MapView, { Marker, Polyline } from "react-native-maps";
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
 import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
 import LogoHeader from "../components/LogoHeader";
 import { StopSummaryCard } from "../components/StopSummaryCard";
 import { formatDuration, formatDistance, formatSavedAt } from "../utils/format";
+import ShareCard from "../components/ShareCard";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "SavedRouteDetailScreen">;
 type RouteProps = RouteProp<RootStackParamList, "SavedRouteDetailScreen">;
@@ -28,6 +31,7 @@ const SavedRouteDetailScreen = () => {
   const { route: savedRoute } = route.params;
 
   const [loadingRerun, setLoadingRerun] = React.useState(false);
+  const [shareModalVisible, setShareModalVisible] = React.useState(false);
   const mapRef = React.useRef<MapView | null>(null);
 
   const duration = savedRoute.journey_end_time - savedRoute.journey_start_time;
@@ -36,6 +40,11 @@ const SavedRouteDetailScreen = () => {
     latitude: s.lat,
     longitude: s.lng,
   }));
+
+  const trailCoordinates =
+    savedRoute.actual_path && savedRoute.actual_path.length > 0
+      ? savedRoute.actual_path
+      : stopCoordinates;
 
   const defaultRegion = {
     latitude: savedRoute.stops[0]?.lat ?? 1.2966,
@@ -81,7 +90,8 @@ const SavedRouteDetailScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <View style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.content}>
       <LogoHeader />
 
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backLink}>
@@ -103,39 +113,50 @@ const SavedRouteDetailScreen = () => {
         </View>
       </View>
 
-      <View style={styles.mapFrame}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          initialRegion={defaultRegion}
-          onMapReady={handleMapReady}
-          scrollEnabled
-          zoomEnabled
-          rotateEnabled
-          pitchEnabled
-        >
-          {savedRoute.actual_path && savedRoute.actual_path.length > 1 && (
-            <Polyline
-              coordinates={savedRoute.actual_path}
-              strokeColor="#1a2b8a"
-              strokeWidth={5}
-            />
-          )}
-          {savedRoute.stops.map((stop, index) => {
-            let pinColor = "#ef4444";
-            if (index === 0) pinColor = "#10b981";
-            if (index === savedRoute.stops.length - 1) pinColor = "#8b5cf6";
-            return (
-              <Marker
-                key={index}
-                coordinate={{ latitude: stop.lat, longitude: stop.lng }}
-                title={`Stop ${index + 1}: ${stop.name}`}
-                description={stop.vibe}
-                pinColor={pinColor}
+      <View style={{ position: 'relative' }}>
+        <View style={styles.mapFrame}>
+          <MapView
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
+            style={styles.map}
+            initialRegion={defaultRegion}
+            onMapReady={handleMapReady}
+            scrollEnabled
+            zoomEnabled
+            rotateEnabled
+            pitchEnabled
+          >
+            {savedRoute.actual_path && savedRoute.actual_path.length > 1 && (
+              <Polyline
+                coordinates={savedRoute.actual_path}
+                strokeColor="#1a2b8a"
+                strokeWidth={5}
               />
-            );
-          })}
-        </MapView>
+            )}
+            {savedRoute.stops.map((stop, index) => {
+              let pinColor = "#ef4444";
+              if (index === 0) pinColor = "#10b981";
+              if (index === savedRoute.stops.length - 1) pinColor = "#8b5cf6";
+              return (
+                <Marker
+                  key={index}
+                  coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+                  title={`Stop ${index + 1}: ${stop.name}`}
+                  description={stop.vibe}
+                  pinColor={pinColor}
+                />
+              );
+            })}
+          </MapView>
+        </View>
+
+        <TouchableOpacity
+          style={styles.floatingShareBtn}
+          onPress={() => setShareModalVisible(true)}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="share-social-outline" size={16} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionLabel}>Your Stops</Text>
@@ -156,6 +177,32 @@ const SavedRouteDetailScreen = () => {
         )}
       </TouchableOpacity>
     </ScrollView>
+
+    <Modal
+      visible={shareModalVisible}
+      animationType="slide"
+      transparent={true}
+      onRequestClose={() => setShareModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Your Adventure Card</Text>
+            <TouchableOpacity onPress={() => setShareModalVisible(false)}>
+              <Ionicons name="close-circle" size={26} color="#9ca3af" />
+            </TouchableOpacity>
+          </View>
+          <ShareCard
+            trailCoordinates={trailCoordinates}
+            distanceKm={Number((savedRoute.total_distance / 1000).toFixed(2))}
+            durationText={formatDuration(duration)}
+            stops={savedRoute.stops}
+            buttonLabel="Share to Stories"
+          />
+        </View>
+      </View>
+    </Modal>
+    </View>
   );
 };
 
@@ -234,6 +281,56 @@ const styles = StyleSheet.create({
   map: {
     width: "100%",
     height: "100%",
+  },
+  floatingShareBtn: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    backgroundColor: Color.colorDarkslateblue,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.22,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: 345,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingTop: 30,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 0,
+    paddingHorizontal: 4,
+  },
+  modalTitle: {
+    fontSize: 23,
+    fontFamily: FontFamily.bodyBold,
+    color: Color.colorGray,
+    fontWeight: '700',
   },
   sectionLabel: {
     fontSize: FontSize.semi,

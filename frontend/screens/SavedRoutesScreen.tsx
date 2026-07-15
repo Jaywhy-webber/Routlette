@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +20,7 @@ import { SavedRoute } from "../types/savedRoute";
 import LogoHeader from "../components/LogoHeader";
 import { getSavedRoutes, deleteRoute } from "../services/routes";
 import { formatDuration, formatDistance, formatSavedAt } from "../utils/format";
+import ShareCard from "../components/ShareCard";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "SavedRoutesScreen">;
 
@@ -27,6 +29,7 @@ const SavedRoutesScreen = () => {
   const [routes, setRoutes] = React.useState<SavedRoute[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [sharingRoute, setSharingRoute] = React.useState<SavedRoute | null>(null);
 
   const fetchRoutes = async () => {
     try {
@@ -66,8 +69,8 @@ const SavedRoutesScreen = () => {
   };
 
   return (
+    <View style={styles.screen}>
     <ScrollView
-      style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
     >
@@ -90,9 +93,22 @@ const SavedRoutesScreen = () => {
 
       {routes.map((route) => {
         const duration = route.journey_end_time - route.journey_start_time;
+        const trailCoordinates =
+          route.actual_path && route.actual_path.length > 0
+            ? route.actual_path
+            : route.stops.map((s) => ({ latitude: s.lat, longitude: s.lng }));
         return (
           <Swipeable
             key={route.id}
+            renderLeftActions={() => (
+              <TouchableOpacity
+                style={styles.swipeShareAction}
+                onPress={() => setSharingRoute(route)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="share-social-outline" size={24} color="#fff" />
+              </TouchableOpacity>
+            )}
             renderRightActions={() => (
               <TouchableOpacity
                 style={styles.swipeDeleteAction}
@@ -103,6 +119,7 @@ const SavedRoutesScreen = () => {
               </TouchableOpacity>
             )}
             overshootRight={false}
+            overshootLeft={false}
           >
             <TouchableOpacity
               style={styles.card}
@@ -128,6 +145,38 @@ const SavedRoutesScreen = () => {
         );
       })}
     </ScrollView>
+
+    {sharingRoute && (
+      <Modal
+        visible={true}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setSharingRoute(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Your Adventure Card</Text>
+              <TouchableOpacity onPress={() => setSharingRoute(null)}>
+                <Ionicons name="close-circle" size={26} color="#9ca3af" />
+              </TouchableOpacity>
+            </View>
+            <ShareCard
+              trailCoordinates={
+                sharingRoute.actual_path && sharingRoute.actual_path.length > 0
+                  ? sharingRoute.actual_path
+                  : sharingRoute.stops.map((s) => ({ latitude: s.lat, longitude: s.lng }))
+              }
+              distanceKm={Number((sharingRoute.total_distance / 1000).toFixed(2))}
+              durationText={formatDuration(sharingRoute.journey_end_time - sharingRoute.journey_start_time)}
+              stops={sharingRoute.stops}
+              buttonLabel="Share to Stories"
+            />
+          </View>
+        </View>
+      </Modal>
+    )}
+    </View>
   );
 };
 
@@ -234,6 +283,48 @@ const styles = StyleSheet.create({
     width: 72,
     borderRadius: 8,
     marginBottom: 12,
+  },
+  swipeShareAction: {
+    backgroundColor: Color.colorDarkslateblue,
+    justifyContent: "center",
+    alignItems: "center",
+    width: 72,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: 345,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    paddingTop: 30,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 0,
+    paddingHorizontal: 4,
+  },
+  modalTitle: {
+    fontSize: 23,
+    fontFamily: FontFamily.bodyBold,
+    color: Color.colorGray,
+    fontWeight: '700',
   },
 });
 
