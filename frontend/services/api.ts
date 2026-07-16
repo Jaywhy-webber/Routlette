@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "https://footrest-slimness-corrosive.ngrok-free.dev";
 
 export type Stop = {
   name: string;

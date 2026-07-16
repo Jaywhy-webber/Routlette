@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   darkGradient: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
   },
   statsOverlay: {
     position: 'absolute',

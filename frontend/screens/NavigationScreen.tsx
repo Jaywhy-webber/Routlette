@@ -267,14 +267,6 @@ const NavigationScreen = () => {
         </TouchableOpacity>
         <Text style={styles.revealVibe}>{currentStop.vibe}</Text>
         <Text style={styles.revealAddressText}>{currentStop.address}</Text>
-        <View style={[styles.categoryLabel, styles.revealCategoryIcon]}>
-          <Ionicons
-            name={CATEGORY_ICONS[currentStop.category] ?? "ellipse"}
-            size={20}
-            color={Color.colorGhostwhite}
-          />
-          <Text style={styles.categoryLabelText}>{currentStop.category}</Text>
-        </View>
 
         {revealed && currentStop.side_quest ? (
           <View style={styles.questBox}>
@@ -390,7 +382,7 @@ const styles = StyleSheet.create({
   revealCard: {
     width: "100%",
     backgroundColor: Color.colorGhostwhite,
-    borderRadius: 0,
+    borderRadius: 16,
     padding: 24,
     alignItems: "center",
   },
@@ -430,7 +422,7 @@ const styles = StyleSheet.create({
   arrivedBtn: {
     width: "100%",
     backgroundColor: Color.colorDarkslateblue,
-    borderRadius: 4,
+    borderRadius: 10,
     paddingVertical: 14,
     alignItems: "center",
   },
@@ -457,7 +449,7 @@ const styles = StyleSheet.create({
   },
   questBox: {
     backgroundColor: "#ffffff",
-    borderRadius: 0,
+    borderRadius: 16,
     padding: 16,
     width: "100%",
     marginBottom: 20,
@@ -479,7 +471,7 @@ const styles = StyleSheet.create({
   clueCardContainer: {
     width: "100%",
     backgroundColor: "#f0f2ff",
-    borderRadius: 0,
+    borderRadius: 16,
     padding: 20,
     marginBottom: 20,
   },
