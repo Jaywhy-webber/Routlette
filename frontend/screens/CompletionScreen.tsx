@@ -10,6 +10,8 @@ import {
   Dimensions,
   Alert,
   Modal,
+  Keyboard,
+  Platform,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -22,6 +24,8 @@ import { StopSummaryCard } from "../components/StopSummaryCard";
 import { formatDuration, formatDistance } from "../utils/format";
 import { saveRoute } from "../services/routes";
 import ShareCard from "../components/ShareCard";
+import { useAuthMode } from "../context/AuthModeContext";
+import { stashPendingRoute } from "../services/pendingRoute";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "CompletionScreen">;
 type RouteProps = RouteProp<RootStackParamList, "CompletionScreen">;
@@ -31,6 +35,7 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 const CompletionScreen = () => {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteProps>();
+  const { authMode, setAuthMode } = useAuthMode();
 
   const { stops, mode, journeyStartTime, totalDistance, actualPath = [] } = route.params;
 
@@ -38,6 +43,7 @@ const CompletionScreen = () => {
   const journeyEndTime = React.useRef(Date.now()).current;
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
   const mapRef = React.useRef<MapView | null>(null);
+  const scrollViewRef = React.useRef<ScrollView | null>(null);
 
   const defaultRegion = {
     latitude: stops[0]?.lat ?? 1.2966,
@@ -57,6 +63,7 @@ const CompletionScreen = () => {
   const [finalDurationText, setFinalDurationText] = React.useState(() =>
     formatDuration(Date.now() - journeyStartTime)
   );
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
 
   React.useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -66,6 +73,34 @@ const CompletionScreen = () => {
     }).start();
   }, []);
 
+  React.useEffect(() => {
+    // "will" fires as soon as iOS knows the keyboard's final height, before
+    // it starts rising — using that (rather than "did", which waits for the
+    // rise animation to finish) is what lets the padding below apply in the
+    // same render pass as the keyboard appearing, instead of one animated
+    // step behind it. Android has no reliable "will" event.
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (keyboardHeight > 0) {
+      scrollViewRef.current?.scrollToEnd({ animated: false });
+    }
+  }, [keyboardHeight]);
+
   const handleMapReady = () => {
     const allPoints = [...stopCoordinates, ...actualPath];
     if (allPoints.length > 0) {
@@ -74,6 +109,11 @@ const CompletionScreen = () => {
         animated: true,
       });
     }
+  };
+
+  const handleGuestSignUpPrompt = async () => {
+    await stashPendingRoute(route.params);
+    setAuthMode("unauthenticated");
   };
 
   const handleSave = async () => {
@@ -101,7 +141,11 @@ const CompletionScreen = () => {
 
   return (
     <Animated.View style={[styles.screen, { opacity: fadeAnim }]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={[styles.content, { paddingBottom: 48 + keyboardHeight }]}
+        keyboardShouldPersistTaps="handled"
+      >
         <LogoHeader />
 
         <Text style={styles.heading}>Adventure Complete</Text>
@@ -175,29 +219,40 @@ const CompletionScreen = () => {
 
         <View style={styles.saveSection}>
           <Text style={styles.saveSectionLabel}>Save this route</Text>
-          <TextInput
-            style={styles.labelInput}
-            placeholder="Name this route"
-            placeholderTextColor="#9ca3af"
-            value={label}
-            onChangeText={setLabel}
-            editable={saveStatus !== "saving" && saveStatus !== "saved"}
-            maxLength={60}
-          />
-          <TouchableOpacity
-            style={[
-              styles.saveBtn,
-              (saveStatus === "saving" || saveStatus === "saved") && styles.saveBtnDisabled,
-            ]}
-            onPress={handleSave}
-            disabled={saveStatus === "saving" || saveStatus === "saved"}
-          >
-            <Text style={styles.saveBtnText}>
-              {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save Route"}
-            </Text>
-          </TouchableOpacity>
-          {saveStatus === "error" && (
-            <Text style={styles.errorText}>Save failed. Try again.</Text>
+          {authMode === "guest" ? (
+            <TouchableOpacity style={styles.saveBtn} onPress={handleGuestSignUpPrompt}>
+              <Text style={styles.saveBtnText}>Sign up to save this route</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TextInput
+                style={styles.labelInput}
+                placeholder="Name this route"
+                placeholderTextColor="#9ca3af"
+                value={label}
+                onChangeText={setLabel}
+                onFocus={() => {
+                  if (keyboardHeight > 0) scrollViewRef.current?.scrollToEnd({ animated: false });
+                }}
+                editable={saveStatus !== "saving" && saveStatus !== "saved"}
+                maxLength={60}
+              />
+              <TouchableOpacity
+                style={[
+                  styles.saveBtn,
+                  (saveStatus === "saving" || saveStatus === "saved") && styles.saveBtnDisabled,
+                ]}
+                onPress={handleSave}
+                disabled={saveStatus === "saving" || saveStatus === "saved"}
+              >
+                <Text style={styles.saveBtnText}>
+                  {saveStatus === "saved" ? "Saved" : saveStatus === "saving" ? "Saving..." : "Save Route"}
+                </Text>
+              </TouchableOpacity>
+              {saveStatus === "error" && (
+                <Text style={styles.errorText}>Save failed. Try again.</Text>
+              )}
+            </>
           )}
         </View>
 

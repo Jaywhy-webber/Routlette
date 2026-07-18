@@ -16,11 +16,13 @@ import { Color, FontFamily, FontSize, StyleVariable } from "../GlobalStyles";
 import { RootStackParamList } from "../types/navigation";
 import LogoHeader from "../components/LogoHeader";
 import { signIn } from "../services/auth";
+import { useAuthMode } from "../context/AuthModeContext";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "LoginScreen">;
 
 const LoginScreen = () => {
   const navigation = useNavigation<NavProp>();
+  const { setAuthMode } = useAuthMode();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
@@ -80,6 +82,13 @@ const LoginScreen = () => {
           ) : (
             <Text style={styles.primaryBtnText}>Sign In</Text>
           )}
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.guestBtn}
+          onPress={() => setAuthMode("guest")}
+        >
+          <Text style={styles.guestBtnText}>Continue as Guest</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -158,6 +167,20 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     fontFamily: FontFamily.bodyBold,
     color: Color.colorGhostwhite,
+    fontWeight: "600",
+  },
+  guestBtn: {
+    marginTop: 12,
+    borderWidth: 1.5,
+    borderColor: Color.colorDarkslateblue,
+    borderRadius: StyleVariable.radius200,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  guestBtnText: {
+    fontSize: FontSize.base,
+    fontFamily: FontFamily.bodyBold,
+    color: Color.colorDarkslateblue,
     fontWeight: "600",
   },
   secondaryLink: {

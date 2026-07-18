@@ -22,6 +22,7 @@ import { Color, FontSize, FontFamily, Height, Width, StyleVariable } from "../Gl
 import { RootStackParamList } from "../types/navigation";
 import { signOut } from "../services/auth";
 import { supabase } from "../services/supabase";
+import { useAuthMode } from "../context/AuthModeContext";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
 
@@ -33,6 +34,7 @@ const MENU_RIGHT = AVATAR_RIGHT;
 
 const Dashboard = () => {
   const navigation = useNavigation<NavProp>();
+  const { authMode, setAuthMode } = useAuthMode();
   const [menuVisible, setMenuVisible] = React.useState(false);
   const [initial, setInitial] = React.useState("?");
 
@@ -40,10 +42,11 @@ const Dashboard = () => {
   const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
+    if (authMode === "guest") return;
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.email) setInitial(user.email[0].toUpperCase());
     });
-  }, []);
+  }, [authMode]);
 
   const openMenu = () => {
     setMenuVisible(true);
@@ -134,7 +137,11 @@ const Dashboard = () => {
         onPress={openMenu}
         activeOpacity={0.75}
       >
-        <Text style={styles.avatarInitial}>{initial}</Text>
+        {authMode === "guest" ? (
+          <Ionicons name="person-outline" size={16} color={Color.colorGhostwhite} />
+        ) : (
+          <Text style={styles.avatarInitial}>{initial}</Text>
+        )}
       </TouchableOpacity>
 
       {/* Menu */}
@@ -164,24 +171,43 @@ const Dashboard = () => {
               },
             ]}
           >
+            {authMode !== "guest" && (
+              <>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  activeOpacity={0.65}
+                  onPress={() => closeMenu(() => navigation.navigate("SavedRoutesScreen"))}
+                >
+                  <Ionicons name="bookmark-outline" size={18} color={Color.colorGray} style={styles.menuIcon} />
+                  <Text style={styles.menuItemText}>My Routes</Text>
+                </TouchableOpacity>
+
+                <View style={styles.menuSeparator} />
+              </>
+            )}
+
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.65}
-              onPress={() => closeMenu(() => navigation.navigate("SavedRoutesScreen"))}
+              onPress={() =>
+                closeMenu(() => {
+                  if (authMode === "guest") {
+                    setAuthMode("unauthenticated");
+                  } else {
+                    signOut();
+                  }
+                })
+              }
             >
-              <Ionicons name="bookmark-outline" size={18} color={Color.colorGray} style={styles.menuIcon} />
-              <Text style={styles.menuItemText}>My Routes</Text>
-            </TouchableOpacity>
-
-            <View style={styles.menuSeparator} />
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              activeOpacity={0.65}
-              onPress={() => closeMenu(() => signOut())}
-            >
-              <Ionicons name="log-out-outline" size={18} color="#dc2626" style={styles.menuIcon} />
-              <Text style={[styles.menuItemText, styles.menuItemDestructive]}>Sign Out</Text>
+              <Ionicons
+                name={authMode === "guest" ? "person-add-outline" : "log-out-outline"}
+                size={18}
+                color={authMode === "guest" ? Color.colorGray : "#dc2626"}
+                style={styles.menuIcon}
+              />
+              <Text style={[styles.menuItemText, authMode !== "guest" && styles.menuItemDestructive]}>
+                {authMode === "guest" ? "Sign Up" : "Sign Out"}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </>

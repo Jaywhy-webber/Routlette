@@ -43,7 +43,9 @@ app.add_middleware(
 def verify_token(authorization: str = Header(default=None)) -> str:
     if not _jwks_client:
         return "anonymous"
-    if not authorization or not authorization.startswith("Bearer "):
+    if not authorization:
+        return "guest"
+    if not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Missing authorization header")
     token = authorization.split(" ", 1)[1]
     try:
