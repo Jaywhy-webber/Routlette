@@ -63,7 +63,7 @@ def verify_token(authorization: str = Header(default=None)) -> str:
 df = pd.read_csv("venues.csv")
 
 # Vibe buckets available for each category
-FOOD_VIBES = ["Fuel Stop", "Quick & Local", "Main Event", "Social Hour"]
+FOOD_VIBES = ["Fuel Stop", "Quick & Local", "Main Event", "Social Hour", "Coffee"]
 ACTIVITY_VIBES = ["Culture", "Outdoors", "Urban Adventure"]
 
 # Live API: broad search types that map to the above vibe buckets via VIBE_MAPPING
@@ -78,16 +78,19 @@ PRICE_LEVEL_MAP = {
 
 # Maps each Google Places primary_type to a vibe bucket
 VIBE_MAPPING = {
+    # coffee
+    'coffee_roastery': 'Coffee','coffee_stand': 'Coffee', 'cafe': 'Coffee',
+
     # quick meal (cafe, coffee, pastries etc)
     'acai_shop': 'Fuel Stop', 'bagel_shop': 'Fuel Stop', 'bakery': 'Fuel Stop',
     'cake_shop': 'Fuel Stop', 'candy_store': 'Fuel Stop', 'cat_cafe': 'Fuel Stop',
-    'chocolate_factory': 'Fuel Stop', 'chocolate_shop': 'Fuel Stop', 'coffee_roastery': 'Fuel Stop',
-    'coffee_shop': 'Fuel Stop', 'coffee_stand': 'Fuel Stop', 'confectionery': 'Fuel Stop',
+    'chocolate_factory': 'Fuel Stop', 'chocolate_shop': 'Fuel Stop',
+    'coffee_shop': 'Fuel Stop', 'confectionery': 'Fuel Stop',
     'deli': 'Fuel Stop', 'dessert_restaurant': 'Fuel Stop', 'dessert_shop': 'Fuel Stop',
     'dog_cafe': 'Fuel Stop', 'donut_shop': 'Fuel Stop', 'ice_cream_shop': 'Fuel Stop',
     'juice_shop': 'Fuel Stop', 'pastry_shop': 'Fuel Stop', 'salad_shop': 'Fuel Stop',
     'sandwich_shop': 'Fuel Stop', 'snack_bar': 'Fuel Stop', 'soup_restaurant': 'Fuel Stop',
-    'tea_house': 'Fuel Stop', 'cafe': 'Fuel Stop',
+    'tea_house': 'Fuel Stop',
 
     # full meal (actual restaurants)
     'afghani_restaurant': 'Main Event', 'african_restaurant': 'Main Event', 'american_restaurant': 'Main Event',
@@ -197,6 +200,7 @@ FALLBACK_CLUES = {
     ("activity", "Culture"): "Step somewhere that holds more than meets the eye. Let the space speak before you do.",
     ("activity", "Outdoors"): "The city fades and something greener takes its place. Breathe it in when you arrive.",
     ("activity", "Urban Adventure"): "Look for what others walk past. Your destination rewards those who pay attention.",
+    ("food", "Coffee"): "Follow the roasted aroma down the path to a spot where the espresso flows and time slows down.",
 }
 
 async def generate_clue(stop: dict) -> str:

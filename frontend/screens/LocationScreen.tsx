@@ -11,7 +11,10 @@ import LogoHeader from "../components/LogoHeader";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, "LocationScreen">;
 
-const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_PLACES_API_KEY || "";
+const GOOGLE_MAPS_API_KEY =
+  process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY ||
+  process.env.GOOGLE_PLACES_API_KEY ||
+  "";
 
 // NUS
 const DEFAULT_REGION: Region = {
@@ -76,15 +79,6 @@ const LocationScreen = () => {
     })();
   }, []);
 
-  // map panning
-  const handleRegionChangeComplete = (newRegion: Region) => {
-    setSelectedLocation({
-      latitude: newRegion.latitude,
-      longitude: newRegion.longitude,
-      address: "Map Centered Position",
-    });
-  };
-
   return (
     <View style={styles.screen}>
       <View style={styles.searchOverlayContainer}>
@@ -101,6 +95,8 @@ const LocationScreen = () => {
           ref={autocompleteRef}
           placeholder="Enter an address..."
           fetchDetails={true}
+          keyboardShouldPersistTaps="handled"
+          enablePoweredByContainer={false}
           onPress={(data, details = null) => {
             if (details) {
               const locationRegion = {
@@ -135,14 +131,21 @@ const LocationScreen = () => {
       ) : (
         <>
           <MapView
-            ref={mapRef}
-            style={styles.map}
-            initialRegion={region}
-            provider="google"
-            showsUserLocation={hasPermission === true}
-            showsMyLocationButton={hasPermission === true}
-            onRegionChangeComplete={handleRegionChangeComplete}
-          />
+              ref={mapRef}
+              style={styles.map}
+              initialRegion={region}
+              provider="google"
+              showsUserLocation={hasPermission === true}
+              showsMyLocationButton={hasPermission === true}
+
+              onRegionChangeComplete={(newRegion) => {
+                setSelectedLocation({
+                  latitude: newRegion.latitude,
+                  longitude: newRegion.longitude,
+                  address: "Map Centered Position",
+                });
+              }}
+            />
 
           <View style={styles.staticPinContainer} pointerEvents="none">
             <View style={styles.pinDot} />
@@ -205,6 +208,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    overflow: 'visible',
   },
   headerGroup: {
     marginBottom: 12,
@@ -224,6 +228,7 @@ const styles = StyleSheet.create({
   },
   autocompleteInputContainer: {
     width: "100%",
+    zIndex: 11,
   },
   autocompleteInput: {
     height: 48,
@@ -242,6 +247,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
     borderWidth: 1,
     borderColor: "#e5e7eb",
+    position: 'absolute',
+    top: 48,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    elevation: 5,
+    maxHeight: 200,
   },
   staticPinContainer: {
     position: "absolute",

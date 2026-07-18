@@ -45,6 +45,7 @@ const FOOD_VIBE_OPTIONS = [
   { value: "Quick & Local", label: "Quick & Local" },
   { value: "Main Event", label: "Main Event" },
   { value: "Social Hour", label: "Social Hour" },
+  { label: "Coffee", value: "coffee" },
 ];
 
 const ACTIVITY_VIBE_OPTIONS = [
@@ -126,7 +127,7 @@ const FilterScreen = () => {
   const [numFood, setNumFood] = React.useState(2);
   const [numActivities, setNumActivities] = React.useState(1);
   // Vibe selections — all enabled by default
-  const [foodVibes, setFoodVibes] = React.useState<string[]>(["Fuel Stop", "Quick & Local", "Main Event", "Social Hour"]);
+  const [foodVibes, setFoodVibes] = React.useState<string[]>(["Fuel Stop", "Quick & Local", "Main Event", "Social Hour", "Coffee"]);
   const [activityVibes, setActivityVibes] = React.useState<string[]>(["Culture", "Outdoors", "Urban Adventure"]);
   const [loading, setLoading] = React.useState(false);
 
@@ -353,7 +354,7 @@ content: {
   },
   loadingOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.55)', // Dims out background inputs softly
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,

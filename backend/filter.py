@@ -29,7 +29,15 @@ def apply_filters(df: pd.DataFrame, lat: float, lng: float, budget: int, categor
     df["rating_count"] = pd.to_numeric(df["rating_count"], errors="coerce")
 
     # 3. Filter by budget (drop rows with missing price_level — can't verify affordability)
-    df = df[df["price_level"].notna() & (df["price_level"] <= budget)]
+    BUDGET_WINDOW = {
+        1: [1],  # Only Cheap ($)
+        2: [1, 2],  # Cheap to Moderate ($ to $$)
+        3: [2, 3],  # Moderate to Premium ($$ to $$$)
+        4: [3, 4]  # Strictly Premium to Luxury ($$$ to $$$$)
+    }
+
+    allowed_tiers = BUDGET_WINDOW.get(budget, [1, 2])
+    df = df[df["price_level"].notna() & (df["price_level"].isin(allowed_tiers))]
 
     # 4. Filter by category
     if category != "both":
