@@ -1,5 +1,4 @@
-e<img width="326" height="142" alt="logo-white" src="https://github.com/user-attachments/assets/c8fe484b-4bc7-4e31-b81e-a6fa55513f7c" />
-# Routlette
+<img width="326" height="142" alt="logo-white" src="https://github.com/user-attachments/assets/c8fe484b-4bc7-4e31-b81e-a6fa55513f7c" />
 
 *A mystery adventure app that picks where you're going, so you don't have to.*
 
