@@ -23,8 +23,8 @@ type RouteProps = RouteProp<RootStackParamList, "NavigationScreen">;
 
 const REVEAL_RADIUS_METRES = 50;
 const CATEGORY_COLORS: Record<string, string> = {
-  food: "#d4a017",
-  activity: "#2e7d32",
+  food: "#483d8b",
+  activity: "#d4a017",
 };
 
 const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
@@ -227,7 +227,7 @@ const NavigationScreen = () => {
 
       <View style={styles.stopCounter}>
         <Text style={styles.progressText}>Stop {currentStopIndex + 1} of {stops.length}</Text>
-        <View style={styles.categoryLabel}>
+        <View style={[styles.categoryLabel, { backgroundColor: badgeColor }]}>
           <Ionicons
             name={CATEGORY_ICONS[currentStop.category] ?? "ellipse"}
             size={18}
@@ -404,7 +404,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: Color.colorDarkslateblue,
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 4,

@@ -9,6 +9,11 @@ const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   activity: "compass",
 };
 
+const CATEGORY_COLORS: Record<string, string> = {
+  food: "#483d8b",
+  activity: "#d4a017",
+};
+
 export function StopSummaryCard({ stop, index }: { stop: Stop; index: number }) {
   const [expanded, setExpanded] = React.useState(false);
 
@@ -26,7 +31,7 @@ export function StopSummaryCard({ stop, index }: { stop: Stop; index: number }) 
     >
       <View style={styles.stopCardHeader}>
         <Text style={styles.stopNumber}>Stop {index + 1}</Text>
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: CATEGORY_COLORS[stop.category] ?? CATEGORY_COLORS.default }]}>
           <Ionicons
             name={CATEGORY_ICONS[stop.category] ?? "ellipse"}
             size={13}

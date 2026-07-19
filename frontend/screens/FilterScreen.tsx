@@ -45,7 +45,7 @@ const FOOD_VIBE_OPTIONS = [
   { value: "Quick & Local", label: "Quick & Local" },
   { value: "Main Event", label: "Main Event" },
   { value: "Social Hour", label: "Social Hour" },
-  { label: "Coffee", value: "coffee" },
+  { label: "Coffee", value: "Coffee" },
 ];
 
 const ACTIVITY_VIBE_OPTIONS = [
@@ -122,7 +122,7 @@ const FilterScreen = () => {
 
   // Filter state
   const [budget, setBudget] = React.useState(2);
-  const [walking, setWalking] = React.useState(5);
+  const [walking, setWalking] = React.useState(3);
   const [mode, setMode] = React.useState("balanced");
   const [numFood, setNumFood] = React.useState(2);
   const [numActivities, setNumActivities] = React.useState(1);
