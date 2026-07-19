@@ -8,7 +8,7 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 // SecureStore is encrypted at rest; fall back to AsyncStorage when the value
 // exceeds SecureStore's ~2 KB per-item limit (e.g. large tokens).
-const SecureStoreAdapter = {
+export const SecureStoreAdapter = {
   getItem: (key: string) =>
     SecureStore.getItemAsync(key).catch(() => AsyncStorage.getItem(key)),
   setItem: (key: string, value: string) =>
