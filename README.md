@@ -1,4 +1,10 @@
 <img width="326" height="142" alt="logo-white" src="https://github.com/user-attachments/assets/c8fe484b-4bc7-4e31-b81e-a6fa55513f7c" />
+<img width="163" height="71" alt="adaptive-icon" src="https://github.com/user-attachments/assets/19fe57a9-f652-43c3-bfdf-a5862ae22114" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://github.com/user-attachments/assets/c8fe484b-4bc7-4e31-b81e-a6fa55513f7c">
+  <source media="(prefers-color-scheme: light)" srcset="[URL_FOR_YOUR_BLACK_LOGO_HERE](https://github.com/user-attachments/assets/19fe57a9-f652-43c3-bfdf-a5862ae22114)">
+  <h1>Routlette</h1>
+</picture>
 
 *A mystery adventure app that picks where you're going, so you don't have to.*
 
