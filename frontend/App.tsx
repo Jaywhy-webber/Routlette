@@ -15,6 +15,7 @@ import RegisterScreen from "./screens/RegisterScreen";
 import ForgotPasswordScreen from "./screens/ForgotPasswordScreen";
 import SavedRoutesScreen from "./screens/SavedRoutesScreen";
 import SavedRouteDetailScreen from "./screens/SavedRouteDetailScreen";
+import DiscoveryMapScreen from "./screens/DiscoveryMapScreen";
 import { RootStackParamList } from "./types/navigation";
 import { AuthModeProvider, useAuthMode } from "./context/AuthModeContext";
 import { consumePendingRoute, PendingRoutePayload } from "./services/pendingRoute";
@@ -71,6 +72,7 @@ const RootNavigator = () => {
           <AppStack.Screen name="CompletionScreen" component={CompletionScreen} />
           <AppStack.Screen name="SavedRoutesScreen" component={SavedRoutesScreen} />
           <AppStack.Screen name="SavedRouteDetailScreen" component={SavedRouteDetailScreen} />
+          <AppStack.Screen name="DiscoveryMapScreen" component={DiscoveryMapScreen} />
         </AppStack.Navigator>
       ) : (
         <AuthStack.Navigator

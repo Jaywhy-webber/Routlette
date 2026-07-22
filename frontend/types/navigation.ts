@@ -12,4 +12,5 @@ export type RootStackParamList = {
   ForgotPasswordScreen: undefined;
   SavedRoutesScreen: undefined;
   SavedRouteDetailScreen: { route: SavedRoute };
+  DiscoveryMapScreen: undefined;
 };
