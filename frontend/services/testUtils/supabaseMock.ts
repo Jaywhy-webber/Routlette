@@ -4,14 +4,13 @@
  *   .from().insert().select().single()
  *   .from().select().order()
  *   .from().delete().eq()
- *   .from().upsert()
  * Every chain method returns the same builder so calls can be chained in any
  * order the real client supports; the builder itself is thenable so `await`ing
  * it directly (without a terminal .single()) resolves to `result`.
  */
 export function createSupabaseQueryBuilderMock(result: { data: any; error: any }) {
   const builder: any = {};
-  ["insert", "select", "delete", "eq", "order", "upsert"].forEach((method) => {
+  ["insert", "select", "delete", "eq", "order"].forEach((method) => {
     builder[method] = jest.fn(() => builder);
   });
   builder.single = jest.fn(() => Promise.resolve(result));

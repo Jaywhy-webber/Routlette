@@ -13,7 +13,6 @@ export type Stop = {
   score: number;
   clue: string;
   side_quest?: string;
-  neighbourhood?: string | null;
 };
 
 export type RouteResponse = {
