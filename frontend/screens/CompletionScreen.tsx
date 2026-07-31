@@ -23,7 +23,6 @@ import LogoHeader from "../components/LogoHeader";
 import { StopSummaryCard } from "../components/StopSummaryCard";
 import { formatDuration, formatDistance } from "../utils/format";
 import { saveRoute } from "../services/routes";
-import { recordRouteCompletion } from "../services/discoveries";
 import ShareCard from "../components/ShareCard";
 import { useAuthMode } from "../context/AuthModeContext";
 import { stashPendingRoute } from "../services/pendingRoute";
@@ -73,18 +72,6 @@ const CompletionScreen = () => {
       useNativeDriver: true,
     }).start();
   }, []);
-
-  const completionRecordedRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (completionRecordedRef.current) return;
-    if (authMode !== "authenticated") return; // avoids a Supabase round-trip for guests; service also no-ops defensively
-    completionRecordedRef.current = true;
-    recordRouteCompletion(stops, journeyStartTime, journeyEndTime).catch(() => {
-      // Passive background tracking — never surface an Alert or block the
-      // screen, unlike handleSave's explicit error path.
-    });
-  }, [authMode]);
 
   React.useEffect(() => {
     // "will" fires as soon as iOS knows the keyboard's final height, before

@@ -182,15 +182,6 @@ const Dashboard = () => {
                   <Text style={styles.menuItemText}>My Routes</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.menuItem}
-                  activeOpacity={0.65}
-                  onPress={() => closeMenu(() => navigation.navigate("DiscoveryMapScreen"))}
-                >
-                  <Ionicons name="map-outline" size={18} color={Color.colorGray} style={styles.menuIcon} />
-                  <Text style={styles.menuItemText}>Discoveries</Text>
-                </TouchableOpacity>
-
                 <View style={styles.menuSeparator} />
               </>
             )}
