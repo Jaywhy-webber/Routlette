@@ -23,11 +23,6 @@ type Props = {
 };
 
 const RegionCallout = ({ name, count, lastExploredAt, path, bounds, centroid, previewColor, onClose }: Props) => {
-  // Centering on the bounding box's midpoint looks off for lopsided or
-  // scattered (multi-island) shapes, since their visual "weight" isn't at
-  // the bbox center. Centering on the true centroid instead — sized to the
-  // farther edge in each direction so nothing gets cropped — keeps the
-  // shape visually balanced regardless of how irregular it is.
   const shapeWidth = bounds.maxX - bounds.minX;
   const shapeHeight = bounds.maxY - bounds.minY;
   const halfWidth = Math.max(centroid.x - bounds.minX, bounds.maxX - centroid.x);
@@ -38,13 +33,7 @@ const RegionCallout = ({ name, count, lastExploredAt, path, bounds, centroid, pr
   const viewBoxHeight = 2 * (halfHeight + padY);
   const previewViewBox = `${centroid.x - halfWidth - padX} ${centroid.y - halfHeight - padY} ${viewBoxWidth} ${viewBoxHeight}`;
 
-  // Percentage-based width/height on <Svg> nested in a flex container proved
-  // unreliable on-device, so we measure the container and pass explicit
-  // pixel dimensions instead. Critically, those dimensions are computed to
-  // already match the viewBox's own aspect ratio (fitted within the
-  // available space) rather than an arbitrary fraction of the container —
-  // relying on preserveAspectRatio="meet" to fix an aspect-ratio mismatch
-  // is exactly what was causing shapes to clip instead of scale to fit.
+
   const [previewSize, setPreviewSize] = React.useState({ width: 0, height: 0 });
   const onPreviewLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;

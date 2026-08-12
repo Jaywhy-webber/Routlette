@@ -10,7 +10,7 @@ GEOJSON_PATH = Path(__file__).resolve().parent.parent / "geo" / "singapore-plann
 PLANNING_AREA_NAME_PROPERTY = "PLN_AREA_N"
 
 # Small, tightly-clustered central/CBD planning areas that are merged into one
-# "Central" neighbourhood for the discovery map — individually distinguishing
+# "Central" neighbourhood for the discovery map, as individually distinguishing
 # them isn't meaningful at the map's scale. Shared with geo/scripts/generate_map_asset.py
 # so point-in-polygon resolution and the rendered map shape never disagree.
 REGION_MERGE_MAP: dict[str, str] = {

@@ -7,7 +7,7 @@ import os
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
 
 # Tests must be deterministic and offline regardless of the developer's local
-# backend/.env — pin this to the static-CSV path so a locally-set
+# backend/.env, pin this to the static-CSV path so a locally-set
 # USE_LIVE_API=true (for manually running the app) never makes tests issue
 # real Google Places requests.
 os.environ["USE_LIVE_API"] = "false"

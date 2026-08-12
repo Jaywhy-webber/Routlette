@@ -28,7 +28,7 @@ def apply_filters(df: pd.DataFrame, lat: float, lng: float, budget: int, categor
     df["rating"] = pd.to_numeric(df["rating"], errors="coerce")
     df["rating_count"] = pd.to_numeric(df["rating_count"], errors="coerce")
 
-    # 3. Filter by budget (drop rows with missing price_level — can't verify affordability)
+    # 3. Filter by budget (drop rows with missing price_level, can't verify affordability)
     BUDGET_WINDOW = {
         1: [1],  # Only Cheap ($)
         2: [1, 2],  # Cheap to Moderate ($ to $$)

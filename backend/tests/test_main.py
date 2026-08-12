@@ -264,7 +264,7 @@ def test_generate_route_invalid_mode_returns_422(client):
 def test_rate_limit_returns_429_after_10_requests_per_minute(client):
     # `client` fixture already reset the limiter, giving this test a clean bucket.
     # Uses the real static dataset with default (empty-pool) params so no clue/
-    # sentiment mocking is needed — every call still counts against the limiter.
+    # sentiment mocking is needed, every call still counts against the limiter.
     for _ in range(10):
         resp = client.get("/generate-route")
         assert resp.status_code == 200
