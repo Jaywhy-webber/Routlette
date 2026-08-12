@@ -54,17 +54,15 @@ async def fetch_robust_live_dataset(center_lat: float, center_lng: float, api_ke
     all_rows = []
     seen_ids = set()
 
-    # Generate a tight dynamic local harvest grid centered exactly where the user is standing
-    # We step every 400m within a localized 1000m radius to catch hyper-local options
+    # Search a grid of points around the user, rather than one wide-radius search,
+    # so hyper-local venues near their exact position aren't outweighed by the area.
     grid_points = generate_grid(center_lat, center_lng, total_radius_m=radius_m, step_size_m=400)
 
     for grid_lat, grid_lng in grid_points:
-        # 1. Food Sweep
         harvest_coordinate(grid_lat, grid_lng, radius=300, types=FOOD_TYPES,
                            category_label="Food", seen_ids=seen_ids,
                            all_rows=all_rows, neighborhood_label="Live_Query")
 
-        # 2. Activity Sweep
         harvest_coordinate(grid_lat, grid_lng, radius=300, types=ACTIVITY_TYPES,
                            category_label="Activity", seen_ids=seen_ids,
                            all_rows=all_rows, neighborhood_label="Live_Query")
@@ -124,7 +122,6 @@ def generate_grid(center_lat, center_lng, total_radius_m, step_size_m=400):
 
     grid_points = []
 
-    # Calculate starting and ending degree boundaries
     start_lat = center_lat - max_deg_offset
     end_lat = center_lat + max_deg_offset
     start_lng = center_lng - max_deg_offset
@@ -134,8 +131,8 @@ def generate_grid(center_lat, center_lng, total_radius_m, step_size_m=400):
     while current_lat <= end_lat:
         current_lng = start_lng
         while current_lng <= end_lng:
-            # Optional: Only include points that fall inside the true circular radius
-            # This prevents wasting API calls on the extreme outer corners of our square grid
+            # Only keep points inside the true circular radius, so API calls aren't
+            # wasted on the square grid's outer corners
             dist_from_center = ((current_lat - center_lat) ** 2 + (current_lng - center_lng) ** 2) ** 0.5
             if dist_from_center <= max_deg_offset:
                 grid_points.append((current_lat, current_lng))
@@ -169,7 +166,6 @@ def harvest_coordinate(lat, lng, radius, types, category_label, seen_ids, all_ro
             "neighbourhood": neighborhood_label,
         })
 
-    # further area subdivision
     if len(places) == 20 and depth < max_depth:
         print(f">20 places found at ({lat:.4f}, {lng:.4f}). Subdividing area...")
         offset_deg = (radius * 0.4) / 111000.0
@@ -201,12 +197,12 @@ def main():
     seen_ids = set()
 
     for (neighborhood, center_lat, center_lng, total_radius) in SEARCH_AREAS:
-        grid_points = generate_grid(center_lat, center_lng, total_radius, step_size_m=400)  #
+        grid_points = generate_grid(center_lat, center_lng, total_radius, step_size_m=400)
         for grid_lat, grid_lng in grid_points:
             harvest_coordinate(grid_lat, grid_lng, radius=300, types=FOOD_TYPES, category_label="Food",
-                               seen_ids=seen_ids, all_rows=all_rows, neighborhood_label=neighborhood)  #
+                               seen_ids=seen_ids, all_rows=all_rows, neighborhood_label=neighborhood)
             harvest_coordinate(grid_lat, grid_lng, radius=300, types=ACTIVITY_TYPES, category_label="Activity",
-                               seen_ids=seen_ids, all_rows=all_rows, neighborhood_label=neighborhood)  #
+                               seen_ids=seen_ids, all_rows=all_rows, neighborhood_label=neighborhood)
 
     if all_rows:
         df = pd.DataFrame(all_rows)
