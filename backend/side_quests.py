@@ -92,7 +92,6 @@ def get_side_quest(primary_type: str, category: str) -> str:
     if clean_type in SIDE_QUESTS:
         return random.choice(SIDE_QUESTS[clean_type])
 
-    # general food/activity side quests fallback
     if category == "food":
         return random.choice(GENERAL_FOOD_QUESTS)
     else:
