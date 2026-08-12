@@ -19,7 +19,6 @@ export type ArrowForwardType = {
   label?: string;
   onPress?: () => void;
 
-  /** Variant props */
   size?: string;
   state?: string;
   variant?: string;
