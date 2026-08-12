@@ -60,10 +60,8 @@ def verify_token(authorization: str = Header(default=None)) -> str:
     except pyjwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# Load the CSV dataset once on startup
 df = pd.read_csv("venues.csv")
 
-# Vibe buckets available for each category
 FOOD_VIBES = ["Fuel Stop", "Quick & Local", "Main Event", "Social Hour", "Coffee"]
 ACTIVITY_VIBES = ["Culture", "Outdoors", "Urban Adventure"]
 
@@ -77,7 +75,6 @@ PRICE_LEVEL_MAP = {
     "PRICE_LEVEL_VERY_EXPENSIVE": 4,
 }
 
-# Maps each Google Places primary_type to a vibe bucket
 VIBE_MAPPING = {
     # coffee
     'coffee_roastery': 'Coffee','coffee_stand': 'Coffee', 'cafe': 'Coffee',
@@ -161,7 +158,6 @@ VIBE_MAPPING = {
 
 
 def get_vibe(primary_type) -> str:
-    # clean before lookup
     clean = str(primary_type).strip("[]'\" ").split(',')[0].strip()
     return VIBE_MAPPING.get(clean, "Other")
 
@@ -289,7 +285,6 @@ async def generate_route(
     # Assign vibe bucket to every venue
     filtered["vibe"] = filtered["primary_type"].apply(get_vibe)
 
-    # Score each venue using gem scoring (rating quality + mystery) blended with mode randomness
     # hard filters based on adventure modes
     if mode == "safe":
         food_mask = (filtered["category"] == "food") & (filtered["rating"] >= 4.3) & (filtered["rating_count"] >= 40) & (filtered["rating_count"] <= 500)
@@ -350,7 +345,6 @@ async def generate_route(
         if pool.empty:
             continue
 
-        # random results sampling
         if mode == "safe":
             # 1. top 4 candidates based on pure base scores
             contenders = pool.nlargest(4, "gem_score")
@@ -364,7 +358,7 @@ async def generate_route(
             pick = pool.sample(1).iloc[0]
 
         else:  # balanced
-            # 1. top 4 candidates based on pure base scores
+            # 1. top 6 candidates based on pure base scores
             contenders = pool.nlargest(6, "gem_score")
             # 2. sentiment analysis
             ranked_pool = await apply_sentiment_and_rank(contenders, GOOGLE_PLACES_API_KEY)
