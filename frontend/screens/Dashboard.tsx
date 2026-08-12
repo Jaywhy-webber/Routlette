@@ -13,7 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import Text1 from "../components/Text1";
-import TextContentTitle from "../components/TextContentTitle";
+import HowToPlayCarousel from "../components/HowToPlayCarousel";
 import ArrowForward from "../components/ArrowForward";
 import LogoHeader from "../components/LogoHeader";
 import X from "../assets/X.svg";
@@ -100,20 +100,7 @@ const Dashboard = () => {
           {/* We call Text1 with NO inner text props because it defaults inside its own file */}
           <Text1 />
 
-          {/*
-            background stretches dynamically around the text instead clipping
-          */}
-          <View style={styles.howItWorksCard}>
-            <TextContentTitle />
-          </View>
-
-          <Text style={styles.footerText}>
-            Routlette will immediately stitch together a mystery path consisting
-            of three distinct local spots. Follow your compass to track them down! The
-            exact names and addresses stay locked until you step within 50 meters!
-            Plus, arriving at each destination unlocks an optional, custom side quest
-            to truly immerse you in the space.
-          </Text>
+          <HowToPlayCarousel />
         </View>
 
         <View style={styles.centeredButtonContainer}>
@@ -245,22 +232,6 @@ const styles = StyleSheet.create({
 
   contentContainer: {
     width: "100%",
-  },
-  howItWorksCard: {
-    width: "100%",
-    backgroundColor: "#f5f5f5",
-    borderRadius: 16,
-    marginVertical: 15,
-    padding: 8,
-    overflow: "hidden",
-  },
-  footerText: {
-    fontSize: FontSize.base,
-    lineHeight: 24,
-    fontFamily: FontFamily.bodyRegular,
-    color: Color.colorGray,
-    textAlign: "left",
-    marginVertical: 16,
   },
   centeredButtonContainer: {
     width: "100%",
