@@ -95,9 +95,7 @@ const Dashboard = () => {
         <StatusBar />
         <LogoHeader />
 
-        {/* 2. TEXT & CONTENT SECTION */}
         <View style={styles.contentContainer}>
-          {/* We call Text1 with NO inner text props because it defaults inside its own file */}
           <Text1 />
 
           <HowToPlayCarousel />
@@ -118,7 +116,6 @@ const Dashboard = () => {
         </View>
       </ScrollView>
 
-      {/* Avatar — fixed top right, outside scroll */}
       <TouchableOpacity
         style={styles.avatar}
         onPress={openMenu}
@@ -131,7 +128,6 @@ const Dashboard = () => {
         )}
       </TouchableOpacity>
 
-      {/* Menu */}
       {menuVisible && (
         <>
           <TouchableOpacity
