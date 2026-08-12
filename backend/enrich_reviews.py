@@ -1,5 +1,4 @@
-"""
-One-time script: fetches Google Places reviews for every venue in venues.csv
+"""One-time script: fetches Google Places reviews for every venue in venues.csv
 and writes them back as a `review_snippets` column.
 
 Run once from the backend directory:
