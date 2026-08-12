@@ -57,7 +57,6 @@ const ACTIVITY_VIBE_OPTIONS = [
 type NavProp = NativeStackNavigationProp<RootStackParamList, "FilterScreen">;
 type RouteProps = import("@react-navigation/native").RouteProp<RootStackParamList, "FilterScreen">;
 
-// Single-select row
 function OptionRow<T extends string | number>({
   options,
   selected,
@@ -84,7 +83,6 @@ function OptionRow<T extends string | number>({
   );
 }
 
-// Multi-select row
 function MultiSelectRow({
   options,
   selected,
@@ -120,7 +118,6 @@ const FilterScreen = () => {
   const startLat = route.params?.startLat ?? DEFAULT_LAT;
   const startLng = route.params?.startLng ?? DEFAULT_LNG;
 
-  // Filter state
   const [budget, setBudget] = React.useState(2);
   const [walking, setWalking] = React.useState(3);
   const [mode, setMode] = React.useState("balanced");
@@ -136,7 +133,6 @@ const FilterScreen = () => {
   };
 
   const handleGenerate = async () => {
-    // Require at least one vibe selected in each category
     if (foodVibes.length === 0) {
       Alert.alert("Select a food vibe", "Pick at least one food vibe to continue.");
       return;
@@ -207,7 +203,6 @@ const FilterScreen = () => {
         onSelect={setNumFood}
       />
 
-      {/* Food vibes — multi-select, different ones will be picked for each food stop */}
       <Text style={styles.label}>Food Vibes</Text>
       <Text style={styles.sublabel}>Each food stop will draw from a different vibe where possible</Text>
       <MultiSelectRow
