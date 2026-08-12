@@ -7,7 +7,7 @@ import pytest
 import main
 
 
-# get_vibe 
+# get_vibe
 
 @pytest.mark.parametrize("primary_type,expected_vibe", [
     ("cafe", "Coffee"),
@@ -78,7 +78,7 @@ async def test_fetch_stop_reviews_exception_returns_empty_string():
     assert result == ""
 
 
-# --- generate_clue -------------------------------------------------------------
+# generate_clue
 
 def _fake_groq_response(content):
     return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))])
@@ -130,7 +130,7 @@ def test_root_returns_status_running(client):
     assert resp.json() == {"status": "Routlette backend is running"}
 
 
-# GET /generate-route 
+# GET /generate-route
 
 def _big_synthetic_df():
     """A larger synthetic venue pool with enough spread across ratings/rating_counts
