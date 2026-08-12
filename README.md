@@ -173,8 +173,7 @@ uvicorn main:app --reload --host 0.0.0.0
 cd frontend
 npm install
 npx expo start --clear
-# Press w to open in browser
-# Scan the QR code with Expo Go on a phone
+# Scan the QR code with Expo Go on a phone (web target is currently broken due to react-native-maps)
 ```
 
 ### Testing on a physical device
@@ -185,14 +184,72 @@ Find your machine's local IP with `ipconfig`, update `BASE_URL` in `frontend/ser
 
 ## Running the app (no dev setup)
 
-There's no published TestFlight or APK build yet, since Routlette hasn't been deployed anywhere outside the team's own machines. The only way to try it right now is through the Expo development server, which means someone on the team has to be running both the backend and frontend locally first.
+There's no published TestFlight or APK build yet. The only way to try Routlette right now is through the Expo development server, which requires someone on the team to be running both the backend and frontend first.
 
-1. Whoever is hosting starts the backend with `--host 0.0.0.0` and the frontend with `npx expo start`, as described in Quick start above.
-2. Install Expo Go from the App Store or Play Store on the device you want to test from.
-3. Make sure that device is on the same Wi-Fi network as the host machine, then scan the QR code printed in the terminal after `npx expo start`.
-4. The app opens inside Expo Go. Generate a route as normal; it talks to the host's backend over the local network.
+### Prerequisites
 
-This only works on the same local network as the host, there's no public URL to share yet. A standalone build (TestFlight for iOS, an APK for Android) is on the roadmap once the core feature set is locked.
+- **Node.js 20** (not 22 or 24 — SDK 52 has plugin compatibility issues with later versions; install via [nvm](https://github.com/nvm-sh/nvm) or [nvm-windows](https://github.com/coreybutler/nvm-windows))
+- **Python 3.10+** with `pip`
+- **Expo Go** installed on the test device (iOS App Store or Google Play Store)
+- The test device and the host machine on the **same Wi-Fi network**
+
+### Steps
+
+**1. Clone the repo**
+
+```bash
+git clone https://github.com/<your-org>/routlette.git
+cd routlette
+```
+
+**2. Set up environment variables**
+
+Copy the template and fill in the keys (ask @cymkr on Telegram for the values):
+
+```
+backend/.env
+  GOOGLE_PLACES_API_KEY=
+  GROQ_API_KEY=
+  EXPO_PUBLIC_SUPABASE_URL=
+  EXPO_PUBLIC_SUPABASE_ANON_KEY=
+
+frontend/.env
+  EXPO_PUBLIC_SUPABASE_URL=
+  EXPO_PUBLIC_SUPABASE_ANON_KEY=
+  EXPO_PUBLIC_API_URL=http://<host-machine-ip>:8000
+```
+
+Find the host machine's local IP with `ipconfig` (Windows) or `ifconfig` (Mac/Linux) and substitute it for `<host-machine-ip>`.
+
+**3. Start the backend**
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # Mac/Linux
+pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0
+# Runs at http://localhost:8000
+```
+
+**4. Start the frontend**
+
+```bash
+cd frontend
+npm install
+npx expo start --clear
+```
+
+A QR code will appear in the terminal. Scan it with the Expo Go app on your phone to launch Routlette.
+
+**5. Windows Firewall note**
+
+If the phone can't reach the backend, add an inbound rule for port 8000 in Windows Defender Firewall (or temporarily disable the firewall). This comes up often on first run.
+
+### Running into issues?
+
+Contact **@cymkr on Telegram** for environment variables, setup help, or anything that doesn't match the steps above.
 
 ---
 
