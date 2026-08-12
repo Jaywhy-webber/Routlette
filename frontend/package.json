@@ -43,6 +43,7 @@
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@types/jest": "^29.5.14",
+    "@types/react-test-renderer": "^19.1.0",
     "jest-expo": "~54.0.0",
     "react-native-svg-transformer": "^1.5.0"
   },
@@ -55,6 +56,7 @@
     "prestart": "node scripts/validate-svgs.js",
     "start": "expo start",
     "test": "jest",
+    "typecheck": "tsc --noEmit",
     "web": "expo start --web"
   },
   "version": "1.0.0"
