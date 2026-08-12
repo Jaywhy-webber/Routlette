@@ -18,6 +18,7 @@ from filter import apply_filters, WALKING_MAP
 from side_quests import get_side_quest
 from scoring import apply_sentiment_and_rank
 from generate_dataset import fetch_robust_live_dataset
+from neighbourhoods import resolve_neighbourhood
 
 load_dotenv()
 groq_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
@@ -382,7 +383,8 @@ async def generate_route(
             "score": round(float(pick.get("final_combined_score", pick["gem_score"])), 3),
             "review_snippets": pick["review_snippets"] if "review_snippets" in pick.index and pd.notna(
                 pick.get("review_snippets")) else "",
-            "side_quest": get_side_quest(pick.get("primary_type", ""), pick["category"])
+            "side_quest": get_side_quest(pick.get("primary_type", ""), pick["category"]),
+            "neighbourhood": resolve_neighbourhood(float(pick["lat"]), float(pick["lng"]))
         })
         remaining = remaining[remaining["name"] != pick["name"]]
 

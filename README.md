@@ -26,6 +26,9 @@ NUS Orbital 2026 · Team Apollo 11 · Milestone 2
 - [Development plan](#development-plan)
 - [Software engineering practices](#software-engineering-practices)
 - [Testing](#testing)
+  - [Automated tests](#automated-tests)
+  - [Issue log](#issue-log)
+  - [Manual test checklist](#manual-test-checklist)
 
 ---
 
@@ -42,17 +45,17 @@ NUS Orbital 2026 · Team Apollo 11 · Milestone 2
 
 ## Motivation
 
-Planning a night out in Singapore tends to collapse into the same handful of choices. Despite the sheer range of food, activities, and neighbourhoods on offer, decision fatigue pushes people back to whatever is familiar and convenient.
+Planning a night out in Singapore tends to collapse into the same handful of choices. Singapore has no shortage of food, activities, and neighbourhoods worth exploring, but decision fatigue keeps pulling people back to whatever is familiar and easy.
 
-The tools that exist to help (blog posts, Google Maps, review aggregators) lean almost entirely on ratings and reviews. That makes them good at surfacing what's already popular, but bad at surfacing the hidden gems sitting just outside the usual radius, and it adds its own kind of noise from social media hype.
+The tools that exist to help (blog posts, Google Maps, review aggregators) run almost entirely on ratings and reviews. They're good at surfacing what's already popular, less useful for the places sitting just outside the usual radius and drawing almost no foot traffic. They also pile on their own noise from social media hype.
 
-Routlette takes the opposite approach: it removes the decision rather than trying to optimise it. Set a few preferences, and the app builds a short, randomised route and reveals it one clue at a time, so the destination stays a surprise until you arrive.
+Routlette sidesteps that problem. Rather than help you optimise the decision, it removes it. Set a few preferences, and the app builds a short route and reveals each stop one at a time, so the destination stays a surprise until you get there.
 
 ---
 
 ## Target audience
 
-Routlette is built for Singaporeans stuck in the rut of routine weekends, who want a low-effort way to inject some spontaneity and exploration into their lives without having to do the planning themselves.
+Routlette is built for Singaporeans stuck on the same rotation of restaurants and the same neighbourhoods every weekend. The appeal is a way out of that rut that doesn't require any planning.
 
 ---
 
@@ -75,18 +78,23 @@ Routlette is built for Singaporeans stuck in the rut of routine weekends, who wa
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | React Native (Expo 52), TypeScript, React Navigation (native stack), expo-location and react-native-maps for live GPS and map display, react-native-google-places-autocomplete for the address search bar |
+| Frontend | React Native (Expo 54), TypeScript, React Navigation (native stack), expo-location and react-native-maps for live GPS and map display, react-native-google-places-autocomplete for the address search bar |
 | Backend | Python, FastAPI, Uvicorn |
 | Data | Pandas, static CSV dataset of 135 venues around NUS (sourced from Google Places API) |
-| Scoring | Custom weighted gem scoring, plus a VADER sentiment pipeline that runs offline for now |
+| Scoring | Custom weighted gem scoring (`gem_score`), plus live VADER sentiment reranking on Safe and Balanced mode routes |
 | AI / clues | Groq API (llama-3.3-70b-versatile) generates a short, atmospheric clue for each stop at route time; falls back to a static clue bank per category/vibe if the request fails |
-| Planned | Supabase (Postgres) for saved routes and user preferences |
+| Auth | Supabase Auth (email/password), JWT verified backend-side via JWKS; guest mode supported with no account required |
+| Database | Supabase (Postgres), `saved_routes` table for authenticated users |
+| Rate limiting | `slowapi`, 10 requests/minute per IP on `/generate-route` |
+| Testing | `jest`/`jest-expo` (frontend), `pytest` (backend) |
 
 ---
 
 ## Data model
 
-There's no database yet. The live route endpoint reads directly from `venues.csv`, a static, one-time export of 135 venues around the NUS area pulled from the Google Places API. The columns below are what the filter and scoring pipeline actually consume; this is the schema that will need to carry over once Supabase is wired in.
+### Venue dataset (`venues.csv`)
+
+The route endpoint reads from `venues.csv`, a static, one-time export of 135 venues around the NUS area pulled from the Google Places API. The columns below are what the filter and scoring pipeline consume.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -101,7 +109,46 @@ There's no database yet. The live route endpoint reads directly from `venues.csv
 | rating_count | int | Number of Google reviews; feeds the mystery_score half of the gem score |
 | neighbourhood | string | Static label; every row currently reads NUS since the dataset only covers one area |
 
-All 135 rows share the same neighbourhood value for now, which is fine while the app is scoped to one area, but it's a column that'll matter once the dataset expands past NUS.
+All 135 rows share the same neighbourhood value for now, which is fine while the app is scoped to one area, but it's a column that'll matter once the dataset expands past NUS. This CSV column itself is still unused past ingestion — `/generate-route` now derives each stop's neighbourhood independently (see below), rather than trusting this static, single-valued label.
+
+### Neighbourhood resolution (`backend/neighbourhoods.py`)
+
+Each stop's `neighbourhood` field in the `/generate-route` response is computed at request time via point-in-polygon lookup against `geo/singapore-planning-areas.geojson` (the official URA Master Plan Planning Area Boundary, 55 regions, sourced from data.gov.sg — see `geo/README.md` for provenance). This is independent of the CSV's own `neighbourhood` column above, and works the same way for both the static dataset and live-API venues, since both always carry real `lat`/`lng`. Powers the neighbourhood discovery map feature (below).
+
+### Supabase (`saved_routes`)
+
+Authenticated users' completed routes are persisted in a Supabase Postgres table. The schema below is reconstructed from `frontend/services/routes.ts` and `frontend/types/savedRoute.ts`; there are no migration files in the repo. The live hosted project is the source of truth.
+
+| Column | Type | Set by |
+|--------|------|--------|
+| id | uuid (PK) | DB default |
+| user_id | uuid | Client, from `session.user.id` |
+| label | text | Client |
+| stops | jsonb (`Stop[]`) | Client |
+| mode | text | Client |
+| journey_start_time | number | Client |
+| journey_end_time | number | Client |
+| total_distance | number | Client |
+| actual_path | jsonb, nullable (`{latitude, longitude}[]`) | Client |
+| saved_at | timestamp | DB default (`now()`) |
+
+Row-level security is expected to enforce per-user scoping on `SELECT` and `DELETE`; RLS is managed directly in the Supabase dashboard and is not documented in this repo.
+
+### Supabase (`route_completions`)
+
+Backs the neighbourhood discovery map: tracks every completed adventure by an authenticated user, per planning area touched, independent of whether the route is ever saved via the save-route form. Created by running `supabase/route_completions.sql` directly in the Supabase SQL editor (same no-migration-files convention as `saved_routes`).
+
+| Column | Type | Set by |
+|--------|------|--------|
+| id | uuid (PK) | DB default |
+| user_id | uuid | Client, from `session.user.id` |
+| planning_area | text | Client, resolved server-side by the backend and attached to each stop |
+| route_token | text | Client, `"{journeyStartTime}-{journeyEndTime}"` — idempotency key so a route can't double-count |
+| completed_at | timestamptz | DB default (`now()`) |
+
+A neighbourhood's "discovered" state and route count are derived reads (`COUNT(*) GROUP BY planning_area` for the signed-in user), not stored directly. A unique index on `(user_id, planning_area, route_token)` plus a client-side `upsert(..., { ignoreDuplicates: true })` (`frontend/services/discoveries.ts`) makes writes safe to retry. RLS restricts both insert and select to `auth.uid() = user_id`; there's no update/delete policy since nothing in the app ever mutates a completion row.
+
+Existing `saved_routes` rows from before this feature shipped are backfilled once via `backend/scripts/backfill_route_completions.py` (needs a `SUPABASE_SERVICE_ROLE_KEY`, used only by that script). Routes a user completed but never saved, from before the feature shipped, have no record anywhere and can't be recovered.
 
 ---
 
@@ -157,7 +204,7 @@ Health check. Returns `{"status": "Routlette backend is running"}`.
 
 ### `GET /generate-route`
 
-Runs the full pipeline (filter, vibe assignment, scoring, sequencing, then clue generation) and returns a 3-stop route.
+Rate-limited to 10 requests/minute per IP. Omit `Authorization` entirely for guest access; a missing header returns `"guest"` rather than 401. A malformed or expired token still 401s.
 
 | Param | Type | Default | Notes |
 |-------|------|---------|-------|
@@ -165,8 +212,10 @@ Runs the full pipeline (filter, vibe assignment, scoring, sequencing, then clue 
 | budget | int 1–4 | 2 | Maximum price level |
 | walking | int 1–5 | 5 | Walking radius preset, 300m–2000m |
 | mode | string | balanced | `safe` / `balanced` / `chaotic` |
-| food_vibes | list[str] | all three | Repeated query param |
-| activity_vibes | list[str] | all three | Repeated query param |
+| food_vibes | list[str] | all 5 | Repeated query param |
+| activity_vibes | list[str] | all 3 | Repeated query param |
+| num_food | int 1–3 | 2 | Number of food stops |
+| num_activities | int 1–3 | 1 | Number of activity stops |
 
 **Response shape:**
 
@@ -182,12 +231,15 @@ Runs the full pipeline (filter, vibe assignment, scoring, sequencing, then clue 
       "lng": 103.77,
       "price_level": 2,
       "score": 0.712,
-      "clue": "..."
+      "clue": "...",
+      "neighbourhood": "Novena"
     }
   ],
   "mode": "balanced"
 }
 ```
+
+`neighbourhood` is `null` if the stop's coordinates fall outside every planning-area polygon (e.g. bad data, reclaimed/offshore edge cases) — never omitted, never a thrown error.
 
 ### Scoring logic
 
@@ -222,13 +274,15 @@ Once the three stops are sequenced, the backend fires off one Groq call per stop
 
 ## App features
 
-The build covers five screens, plus two backend-only steps that sit between Filters and Navigation: Dashboard → Location → Filters → Route Generation → Clue Generation → Navigation → Completion.
+The app has two navigators swapped at the root by auth state. The `AppStack` (Dashboard onward) is shown for both authenticated and guest users; the `AuthStack` (Login / Register / Forgot Password) is shown only when there is no session and the user hasn't chosen guest mode. The full adventure flow (generate route, follow clues, reach stops, see completion summary) is available to everyone. Saving routes and accessing saved route history requires an account.
+
+Dashboard → Location → Filters → Route Generation → Clue Generation → Navigation → Completion
 
 ### 1. Dashboard
 
 #### Overview
 
-The landing screen leads with "Tired of repetitive nights out?", speaking directly to the decision-fatigue problem the app is solving.
+The landing screen leads with "Tired of repetitive nights out?", the app's one-line pitch at the problem it solves.
 
 #### Architecture
 
@@ -242,10 +296,11 @@ None. `Dashboard.tsx` never calls the API or touches `venues.csv`. The first net
 
 - A "How it works" card gives a plain-language summary of the flow before the user commits to anything.
 - A single prominent "Start Adventure" button is the only call to action on the screen.
+- An avatar icon in the top-right opens a menu: authenticated users see "My Routes" and "Sign Out"; guests see "Sign Up" only.
 
 #### Design & UX considerations
 
-There's nothing else competing for attention on the screen. One headline, one explainer, one button, so the very first thing a new user does is make a forward move rather than navigate a menu.
+There's nothing else competing for attention on the screen. One headline, one explainer, one button, so the very first thing a new user does is make a forward move rather than navigate a menu. The avatar menu is the only surface where auth status affects what's shown; the rest of the app flow is identical for guests and signed-in users.
 
 ---
 
@@ -253,7 +308,7 @@ There's nothing else competing for attention on the screen. One headline, one ex
 
 #### Overview
 
-Asks where the user is starting from, and this is now fully live rather than a UI-only placeholder.
+Asks where the user is starting from. The location is read from the device's GPS, not a fixed default.
 
 #### Architecture
 
@@ -261,7 +316,7 @@ Component: `LocationScreen.tsx`. Requests GPS permission and the device's curren
 
 #### Backend
 
-None directly, but what happens here sets up everything downstream. The lat and lng captured on this screen become the lat and lng query parameters on `/generate-route`, and the exact origin point `filter.py`'s `haversine()` function measures every venue against.
+None directly. The lat and lng captured here become the query parameters on `/generate-route`, and the origin `filter.py`'s `haversine()` uses to measure distance to every venue.
 
 #### Key features
 
@@ -271,7 +326,7 @@ None directly, but what happens here sets up everything downstream. The lat and 
 
 #### Design & UX considerations
 
-Defaulting to the user's real position rather than a fixed map centre removes a step most location pickers force on you. The autocomplete bar exists for the case where someone wants to set a future meetup point rather than their live location.
+Defaulting to the user's real position rather than a fixed map centre removes a step most location pickers force on you. The autocomplete bar covers the case where someone wants to set a future meetup point rather than use their live location.
 
 ---
 
@@ -279,7 +334,7 @@ Defaulting to the user's real position rather than a fixed map centre removes a 
 
 #### Overview
 
-The main point of user input, deliberately kept to a single scrollable screen rather than a multi-step wizard, so all the choices are visible and adjustable at once before committing.
+The main point of user input, deliberately kept to a single scrollable screen rather than a multi-step wizard, so all the choices are visible and adjustable at once before the user commits to anything.
 
 #### Architecture
 
@@ -347,7 +402,7 @@ There's nothing to show here since there's no screen, but the choices made in th
 
 #### Overview
 
-Another step with no screen of its own. Once Route Generation has picked and sequenced the three stops, one Groq call goes out per stop, all fired at once, and the results come back as a `clue` field on each stop object before the response is returned.
+Another step with no screen of its own. Once Route Generation has picked and sequenced the three stops, one Groq call goes out per stop, all fired at once, and each result comes back as a `clue` field on each stop object before the API sends its response.
 
 #### Backend
 
@@ -394,7 +449,7 @@ The call runs against `llama-3.3-70b-versatile` with `max_tokens=120` and `tempe
 
 #### Design & UX considerations
 
-Including the venue's real name as hidden context, rather than withholding it from the model entirely, gives it a sharper anchor for tone and detail; leak prevention rests on the explicit instruction never to repeat the name, not on the model simply not knowing it. Folding in real review snippets on the live path pushes the same trade further: richer, more specific clues, at the cost of needing an equally explicit instruction not to quote them verbatim. The same per-stop shape (category, vibe, price level, plus whatever extra context is available) also keeps the fallback bank simple, since a fallback only ever has to match a `(category, vibe)` pair.
+Including the venue's real name as hidden context, rather than withholding it from the model entirely, gives the model a sharper anchor for tone and detail; leak prevention rests on the explicit instruction never to repeat the name, not on the model simply not knowing it. Weaving in real review snippets on the live path pushes the same trade further: richer, more specific clues, at the cost of needing an equally explicit instruction not to quote them verbatim. The same per-stop shape (category, vibe, price level, plus whatever extra context is available) also keeps the fallback bank simple, since a fallback only ever has to match a `(category, vibe)` pair.
 
 ---
 
@@ -402,7 +457,7 @@ Including the venue's real name as hidden context, rather than withholding it fr
 
 #### Overview
 
-Replaces the old static Results screen with a live, clue-by-clue reveal loop.
+A live, clue-by-clue reveal loop that is the core of the adventure experience.
 
 #### Architecture
 
@@ -422,7 +477,7 @@ None beyond what `/generate-route` already returned. The scoring and sequencing 
 
 #### Design & UX considerations
 
-Hiding the name until arrival is the whole point of the app, so the compass-and-distance pairing had to give the user enough to navigate by without accidentally leaking the destination through, say, a map pin or street name. The hint toggle is opt-in rather than shown by default, so the surprise stays intact for anyone who doesn't want a preview.
+The name stays hidden until arrival; that is the whole point. The compass-and-distance pairing gives the user enough to navigate without leaking the destination through a map pin or street name. The hint toggle is opt-in, so the surprise stays intact for anyone who doesn't want a preview.
 
 ---
 
@@ -430,7 +485,7 @@ Hiding the name until arrival is the whole point of the app, so the compass-and-
 
 #### Overview
 
-Once all 3 stops are cleared, the journey closes on a summary screen.
+Once all three stops are reached, the app shows a summary screen.
 
 #### Architecture
 
@@ -445,11 +500,13 @@ None beyond what `/generate-route` already returned. `CompletionScreen` doesn't 
 - Total time and total distance walked across the route.
 - A tap-to-expand card per stop showing address and price level.
 - The activity and second food stop start collapsed, so the screen doesn't dump every address at once.
+- Authenticated users see a save form to label and store the route to Supabase; guests see a "Sign up to save this route" prompt instead.
+- A shareable route card (map snapshot + journey stats) can be exported via `expo-sharing` or saved to the camera roll, available to both guests and authenticated users.
 - "Start a New Adventure" returns to the Dashboard to begin again.
 
 #### Design & UX considerations
 
-Collapsing two of the three stop cards by default keeps the summary scannable; the first stop stays expanded since it's the one most likely to be looked back on immediately after the walk.
+Two of the three stop cards start collapsed to keep the summary scannable. The first stays open since that's the stop users are most likely to check the moment they finish. The share card is auth-independent by design; there's no reason a guest's finished route should be less shareable than an authenticated user's.
 
 ---
 
@@ -463,7 +520,93 @@ The loop described in the user stories is now implemented end to end:
 4. On arrival, the stop's name and details are revealed
 5. Repeat for the remaining stops, then show the Completion summary
 
-Two pieces from the original user stories are still open: rating a stop after visiting it, and saving a completed route for later. Both remain scoped as extension features (see Development plan).
+Rating a stop after visiting it remains scoped as an extension feature (see Development plan).
+
+---
+
+### 8. Authentication & guest mode
+
+#### Overview
+
+Auth is Supabase-backed with a guest option. Any user can generate and complete a full adventure without an account; saving routes and accessing saved route history requires signing up.
+
+#### Architecture
+
+The app's root state is a tri-state `authMode`: `'loading' | 'authenticated' | 'guest' | 'unauthenticated'`, not a boolean. `AuthModeProvider` (`context/AuthModeContext.tsx`) wraps the app and calls `resolveAuthMode()` (`context/authModeResolver.ts`), a pure function that encodes the transition logic, on every Supabase `onAuthStateChange` event. `App.tsx`'s `RootNavigator` renders the full `AppStack` for both `'authenticated'` and `'guest'`; only `'unauthenticated'` shows the `AuthStack` (Login / Register / ForgotPassword).
+
+Guest status is session-only; it doesn't persist across app restarts. Since Supabase registration requires email confirmation (no immediate session), a guest's completed route is stashed to `AsyncStorage` (`services/pendingRoute.ts`) before leaving `CompletionScreen`, and restored automatically on the next app launch, whether the user finished signup or bailed back to guest mode.
+
+#### Screens
+
+**Login** (`LoginScreen.tsx`): email/password sign-in plus a "Continue as Guest" button that sets `authMode` to `'guest'`. On successful sign-in, `RootNavigator` swaps to the `AppStack` automatically.
+
+**Register** (`RegisterScreen.tsx`): email/password sign-up. Because Supabase requires email confirmation before a session is issued, submission redirects back to `LoginScreen` rather than logging the user in immediately.
+
+**Forgot password** (`ForgotPasswordScreen.tsx`): sends a Supabase password-reset email.
+
+#### Backend
+
+`verify_token` in `main.py`. A missing `Authorization` header returns `"guest"` (not 401); a malformed, invalid, or expired token 401s; a valid token returns the Supabase `user_id` from the JWT's `sub` claim. Tokens are verified via JWKS (not the shared JWT secret). The `user_id` is available to route generation but not currently used beyond the auth gate.
+
+#### Key features
+
+- Full adventure flow available to all users, no account required.
+- **Continue as Guest**: a single tap on `LoginScreen` sets `authMode` to `'guest'` and sends the user straight to the `AppStack`, skipping registration entirely. No account, no email confirmation, no waiting.
+- Guest mode persists within the session; relaunching the app clears it.
+- Completed route stashed to `AsyncStorage` before signup detour, restored automatically after.
+- Auth screens (Login, Register, Forgot Password) only shown for `'unauthenticated'` state; guests bypass them entirely.
+
+---
+
+### 9. Saved routes
+
+#### Overview
+
+Authenticated users can label, save, and revisit their completed routes.
+
+#### Architecture
+
+**`SavedRoutesScreen.tsx`**: fetches the user's routes from Supabase (`services/routes.ts` → `getSavedRoutes()`), ordered by `saved_at` descending, and renders them as a list. Accessed from the Dashboard avatar menu.
+
+**`SavedRouteDetailScreen.tsx`**: displays a single saved route's stops, mode, and stats. Supports deletion via `deleteRoute()`.
+
+#### Backend
+
+`frontend/services/routes.ts` calls Supabase directly (`saveRoute`, `getSavedRoutes`, `deleteRoute`) with no backend intermediary. The backend never touches `saved_routes`; it only issues and verifies JWTs. Per-user scoping relies on Postgres RLS enforced in the Supabase dashboard.
+
+#### Key features
+
+- Save a completed route with a custom label immediately after finishing it.
+- List of all saved routes, newest first, accessible from the Dashboard.
+- Tap any route to see the full stop list and journey stats.
+- Delete a saved route from the detail view.
+
+---
+
+### 10. Route sharing
+
+#### Overview
+
+Once a route is complete, users can export a summary card — a map snapshot plus journey stats — via the system share sheet or save it directly to the camera roll. Sharing is available to both guests and authenticated users.
+
+#### Architecture
+
+Component: `ShareCard.tsx`, rendered inside `CompletionScreen.tsx`. `expo-gl` and `react-native-maps` render a map snapshot of the stops as a `ViewShot` reference; `expo-sharing` drives the system share sheet; `expo-media-library` handles saving to the camera roll. The card is built entirely from data already in navigation params (stop list, total time, total distance) — no additional network call is made.
+
+#### Backend
+
+None. Sharing runs entirely on-device from data already returned by `/generate-route`.
+
+#### Key features
+
+- A map snapshot showing the route's stops, overlaid with total time and total distance.
+- "Share" exports the card via the system share sheet (`expo-sharing`), supporting any app the OS surfaces (Messages, WhatsApp, Instagram, AirDrop, etc.).
+- "Save to camera roll" writes the card image to the device's photo library via `expo-media-library`.
+- Auth-independent: guests and authenticated users get identical sharing functionality. There is no reason a guest's finished route should be less shareable.
+
+#### Design & UX considerations
+
+Making sharing auth-independent was a deliberate call. The share card is a natural end to the adventure and the most likely thing a user wants to do immediately on the Completion screen, regardless of whether they have an account. Gating it behind login would penalise exactly the users most likely to share (guests trying the app for the first time), so the feature was built to require no session at all.
 
 ---
 
@@ -471,7 +614,7 @@ Two pieces from the original user stories are still open: rating a stop after vi
 
 ### Brand
 
-The wordmark replaces the diagonal stroke of the capital R with a dotted arrow, nodding to the navigation path users take through the app. The hand-drawn brushstroke style sets it apart from navigation apps, which tend toward clean vector marks.
+The wordmark replaces the diagonal stroke of the capital R with a dotted arrow, a reference to the navigation paths users take through the app. The hand-drawn, brushstroke style puts clear distance from the clean vector marks conventional maps apps use.
 
 The name is a portmanteau of "route" and "roulette": route for the wayfinding, roulette for the luck-based trust the user has to place in it, since any given stop might turn out to be a flop or a genuine hidden gem.
 
@@ -518,32 +661,45 @@ Routlette is being built across three Orbital milestones.
 | Frontend | 4-screen React Native app (Dashboard, Location, Filters, Results); multi-select vibe pickers; single-select budget/distance/mode chips; results rendered as venue cards with name, vibe, address, and coordinates |
 | Integration | Frontend wired to the live backend, with no mock data in the current build |
 
-### Milestone 2: in progress
+### Milestone 2: shipped
 
-| Status | What it covers |
-|--------|----------------|
-| Shipped early | Live GPS location input via expo-location and react-native-maps, with Google Places autocomplete; LLM-generated clue-based navigation via Groq (llama-3.3-70b-versatile), with a static fallback bank; Navigation screen with compass-and-distance UI and 50m arrival reveal; post-route Completion summary screen |
-| Near-term | Route sequencer that orders the 3 stops sensibly rather than by distance alone; connecting the offline VADER sentiment pipeline in `scoring.py` into the live `/generate-route` scoring path |
-| Stretch | Supabase integration for saved routes and persisted user preferences |
+| Area | What's done |
+|------|-------------|
+| Navigation | Navigation screen with live compass arrow, haversine distance, 50m arrival reveal, hint toggle, and skip button for testing |
+| Completion | Post-route summary screen with tap-to-expand stop cards, journey stats, save form (auth) / sign-up prompt (guest), and shareable route card |
+| Clue generation | Groq (llama-3.3-70b-versatile) generates per-stop mystery clues at request time; concurrent via `asyncio.gather`; static fallback bank per `(category, vibe)` |
+| Sentiment reranking | Live VADER sentiment reranking wired into `/generate-route` for Safe and Balanced modes |
+| Auth | Supabase email/password auth; JWT verified backend-side via JWKS; Login, Register, and Forgot Password screens |
+| Guest mode | Tri-state `authMode` (`loading / authenticated / guest / unauthenticated`); full adventure flow available without an account; pending route stash/restore across sign-up detour |
+| Saved routes | `saved_routes` Supabase table; save, list, and delete from Saved Routes and Saved Route Detail screens |
+| Share card | Map-snapshot share card exported via `expo-sharing` / `expo-media-library`, available to all users |
+| Rate limiting | `slowapi` at 10 requests/minute per IP on `/generate-route` |
+| Android build | Native Android build checked into `frontend/android/` via `expo prebuild` |
+| Automated tests | `jest`/`jest-expo` frontend suite (6 files); `pytest` backend suite (1 file), see Testing |
 
 ### Final milestone: stretch goals
 
-Side quests between main stops, a user rating system that feeds back into future route scoring, and saved/shareable routes are scoped as extension features beyond the core experience, to be tackled if the core loop is solid going into the final stretch.
+Side quests between main stops, a user rating system that feeds back into future route scoring, and preference learning from past routes are scoped as extension features beyond the core experience, to be tackled in the final stretch.
 
 ### Notable decisions & trade-offs
 
 - A `USE_MOCK` flag in the API layer during early frontend work, so UI could be built and demoed before the backend was ready. Removed once the live backend was stable.
 - Walking distance is shown to users as time (~3 to ~25 min) rather than metres, since metres are a worse mental model for "how far am I willing to walk." Internally it still maps to a 300m–2000m scale.
-- Sentiment score in the offline pipeline is weighted 20% against an 80% gem score, so that review-text noise can't dominate a venue's ranking. This hasn't been merged into the live endpoint yet (see Known issues / watch-outs).
-- `scoring.py` is intentionally not imported into `main.py`, because it auto-executes a full scoring run at module load. The vibe mapping it depends on was duplicated into `main.py` instead of shared, to sidestep that side effect rather than refactor it under deadline.
+- Sentiment score is weighted 20% against an 80% gem score in the reranking step, so that review-text noise can't dominate a venue's ranking.
+- Guest mode is session-only (never persisted), which keeps the auth model simple. A guest who restarts the app lands on the login screen again, which is the correct default rather than an edge case to handle.
+- `scoring.py` exposes `apply_sentiment_and_rank` as a plain async function and is safe to import. It does not auto-execute at module load.
 
 ### Known issues / watch-outs
 
-- `scoring.py` runs `filter_and_score_gems()` at import time, so never import it directly from the live app.
-- `generate_dataset.py` hits the live Google Places API, so don't re-run it without intent: it costs quota.
-- Physical-device testing needs `--host 0.0.0.0` on uvicorn and a manually updated `BASE_URL` in `api.ts`; easy to forget after switching networks.
+- `generate_dataset.py` and `enrich_reviews.py` hit the live Google Places API; don't re-run without intent.
+- Web bundling (`expo start --web`) is broken end-to-end because `react-native-maps` (`LocationScreen.tsx`, `CompletionScreen.tsx`) fails to bundle for web. Test on Expo Go or a native build instead.
+- Physical-device testing needs `--host 0.0.0.0` on uvicorn and a matching `EXPO_PUBLIC_API_URL` in `frontend/.env`; easy to forget after switching networks.
 - Windows Firewall can silently block port 8000 on first run.
-- Clue generation needs a valid `GROQ_API_KEY` in `backend/.env`; without one, every stop quietly falls back to its static clue instead of erroring, which is by design but can look like the LLM integration isn't running if you're not aware of the fallback.
+- Clue generation needs a valid `GROQ_API_KEY` in `backend/.env`; without one, every stop quietly falls back to its static clue instead of erroring.
+- `SUPABASE_JWT_SECRET` in `backend/.env` is currently unused; `verify_token` uses JWKS, not the shared secret.
+- No migration files exist for the Supabase schema; changes to `saved_routes` (or the newer `route_completions`) must be made directly in the Supabase dashboard.
+- `backend/scripts/backfill_route_completions.py` is a one-time ops script (not app logic) that needs a `SUPABASE_SERVICE_ROLE_KEY` in `backend/.env` to bypass RLS and read every user's `saved_routes`; never used by `main.py`, never committed.
+- `geo/singapore-planning-areas.geojson` and `frontend/assets/mapData/planningAreas.ts` are generated/downloaded assets, not hand-authored — see `geo/README.md` before touching either.
 
 ---
 
@@ -555,7 +711,7 @@ The repo follows a feature-branch workflow on GitHub: `feature/livelocation` and
 
 ### Testing approach
 
-There's no automated test suite yet (see Testing). With a two-person team, the practical substitute has been each person manually exercising the other's feature on a physical device before merging, rather than a formal review process.
+Automated tests cover the auth, guest-mode, and service-layer logic that would be most disruptive to break silently; see Testing for the full suite. Component-level tests for screens and broader endpoint tests are not yet in place; those are a separate, explicitly scoped initiative. In practice, each person has tested the other's feature on a physical device before merging.
 
 ### Keeping main deployable
 
@@ -565,7 +721,93 @@ Features are merged once they run end to end on a physical device, not just in t
 
 ## Testing
 
-Routlette doesn't yet have an automated test suite. Testing so far has been manual, done alongside development each week. The table below is the actual record of issues surfaced and how they were resolved, pulled from the team's weekly project log.
+### Automated tests
+
+The test suite covers the auth and service layer: the logic that would be most disruptive to break silently in a two-person codebase. Screen-level component tests are not yet in place.
+
+**Running the tests:**
+
+```bash
+cd frontend && npm test          # jest-expo
+cd backend && pip install -r requirements-dev.txt && pytest
+```
+
+`frontend/jest.config.js` uses the `jest-expo` preset with `@react-native-async-storage/async-storage` mapped to its jest mock. `backend/conftest.py` changes directory to `backend/` before each test run so `venues.csv` and `.env` resolve regardless of where pytest is invoked from.
+
+#### Frontend (`jest`/`jest-expo`), 7 files
+
+**`context/__tests__/authModeResolver.test.ts`** (3 tests)
+
+Tests the `resolveAuthMode()` pure function that encodes every tri-state transition. The "Continue as Guest" path relies on the third case: once a user has been placed in guest mode, a null-session event from Supabase (which fires on app restart with no real login) does not drop them back to unauthenticated — it stays `'guest'`.
+- Any session present → `'authenticated'`, regardless of prior state
+- `'loading'` + no session → `'unauthenticated'`
+- `'guest'` + no session → stays `'guest'` (Continue as Guest survives null-session events)
+
+**`context/__tests__/AuthModeContext.test.tsx`** (5 tests)
+
+Tests the `AuthModeProvider` lifecycle using `react-test-renderer`. Supabase is mocked at the module level so no real network calls happen. A minimal `Probe` component reads `useAuthMode()` and records each emitted value, letting the tests assert on the full sequence of state transitions rather than just the final value:
+- Starts in `'loading'` before `getSession` resolves
+- Resolves to `'authenticated'` or `'unauthenticated'` based on the initial session
+- Updates live when `onAuthStateChange` fires a `SIGNED_IN` event mid-session
+- Calls `unsubscribe` on unmount (no Supabase listener leak)
+- `useAuthMode` throws when used outside a provider
+
+**`services/__tests__/pendingRoute.test.ts`** (3 tests)
+
+Tests the `AsyncStorage` stash/consume round-trip for the sign-up detour:
+- Stashed payload survives a `consumePendingRoute` call and is cleared afterwards (consume is destructive)
+- Returns `null` when nothing was stashed
+- Returns `null` and clears the key for a malformed stored value (bad JSON doesn't throw)
+
+**`services/__tests__/api.test.ts`** (8 tests)
+
+Tests `generateRoute()`: URL construction, auth header behaviour, and error handling:
+- Scalar params and repeated-key array params (`food_vibes`, `activity_vibes`) serialised correctly
+- `Authorization: Bearer <token>` included when a session is present; omitted when there's no session
+- Parses and returns JSON on success
+- Throws the `detail` message from a non-ok response body, or a generic status message if the body is unparseable
+- Logs and rethrows `AbortError`
+- `clearTimeout` called in both success and error paths (no timeout leak)
+
+**`services/__tests__/auth.test.ts`** (8 tests)
+
+Tests the login (`signIn`), registration (`signUp`), sign-out (`signOut`), and session retrieval (`getSession`) wrappers. Each function gets a success case and an error case to confirm the wrapper re-throws rather than swallowing the Supabase error object. `getSession` has a third case: returns `null` (not an error) when no session is present, which is what the app checks to decide whether to show the auth stack or enter guest mode.
+
+**`services/__tests__/routes.test.ts`** (8 tests)
+
+Covers the full saved-routes lifecycle — saving a completed route, listing saved routes, and deleting a route — against a chainable Supabase query builder mock (`createSupabaseQueryBuilderMock` in `services/testUtils/supabaseMock`), which simulates the `.from().insert().select().single()` / `.from().select().order()` / `.from().delete().eq()` chains without a real database:
+- `saveRoute` throws `'Not authenticated'` and never queries the table when there's no session
+- `saveRoute` inserts with `user_id` from the session and returns the saved row
+- `getSavedRoutes` selects all rows ordered by `saved_at` descending; returns `[]` when data is null
+- `deleteRoute` calls `.delete().eq('id', ...)` and resolves cleanly
+- All three propagate Supabase errors
+
+**`utils/__tests__/format.test.ts`** (12 tests)
+
+Tests the three display-formatting utilities used across the Completion and Saved Routes screens:
+- `formatDuration`: converts milliseconds to a human-readable string (`45s`, `2m 5s`, `1h 2m`); drops seconds once hours are present; handles zero and exact boundary values (60 000 ms, 3 600 000 ms)
+- `formatDistance`: formats metres as `"500 m"` below 1 000 m and as `"2.53 km"` above; switches units exactly at the 1 000 m boundary
+- `formatSavedAt`: converts an ISO timestamp to a non-empty display string containing the correct year; produces different output for different inputs
+
+#### Backend (`pytest`), 1 file
+
+**`tests/test_auth.py`** (6 tests)
+
+Tests `verify_token` in `main.py` against all its branches:
+- Missing header → `"guest"`
+- Malformed header (no `Bearer` prefix) → 401
+- No JWKS client configured → `"anonymous"` for any input (dev-only fallback)
+- Valid JWT with a mocked signing key → returns `payload["sub"]`
+- Expired token → 401 with `"Token expired"`
+- Invalid token → 401 with `"Invalid token"`
+
+The test file sets `SUPABASE_URL` before importing `main`, since the module-level JWKS client is constructed at import time from that env var.
+
+**Not covered by automated tests:** The LoginScreen UI (email form rendering, "Continue as Guest" button interaction), the CompletionScreen save form, the SavedRoutesScreen list UI, and route sharing (`ShareCard`, `expo-sharing`) are all exercised by manual testing only. Screen-level component tests are a planned but not yet scoped addition.
+
+---
+
+Routlette's manual testing record is below. The table is the actual record of issues surfaced and how they were resolved, pulled from the team's weekly project log.
 
 ### Issue log
 
@@ -582,7 +824,7 @@ Routlette doesn't yet have an automated test suite. Testing so far has been manu
 
 ### Manual test checklist
 
-Cases to (re-)run before each milestone submission. Status reflects what's been verified manually as of this round of testing; this list should be updated as more Milestone 2 features land.
+Cases to (re-)run before each milestone submission.
 
 | Test case | Expected behaviour | Status |
 |-----------|-------------------|--------|
@@ -592,15 +834,23 @@ Cases to (re-)run before each milestone submission. Status reflects what's been 
 | Mode randomness | Safe mode results stay close to top-rated gems run after run; Chaotic mode varies widely between runs with the same filters | Verified (spot-checked, not statistically measured) |
 | API parameter defaults | Calling `/generate-route` with no query params returns a valid route using NUS-area defaults | Verified |
 | Frontend ↔ backend integration | Filter selections on the Filters screen are reflected correctly on the Navigation screen | Verified |
-| Physical device connectivity | App reachable from a phone on the same network via `BASE_URL` + `--host 0.0.0.0` | Verified, firewall rule required on Windows |
+| Physical device connectivity | App reachable from a phone on the same network via `EXPO_PUBLIC_API_URL` + `--host 0.0.0.0` | Verified, firewall rule required on Windows |
 | Live GPS location input | Location screen returns the user's actual coordinates instead of the NUS default | Verified |
-| Sentiment-adjusted scoring on live route | `/generate-route` score reflects VADER sentiment, not just `gem_score` | Not yet implemented; pipeline exists offline only |
+| Sentiment-adjusted scoring on live route | `/generate-route` score reflects VADER sentiment reranking for Safe and Balanced modes | Verified |
 | Clue-based navigation reveal | Stops are revealed one clue at a time, with the destination name hidden until the 50m arrival radius is reached | Verified |
 | Groq fallback | If the Groq call for a stop's clue fails, the static fallback clue for that stop's `(category, vibe)` pair is used instead of an error | Verified (manual fallback test) |
-| Saved routes | A completed route can be saved and reloaded later | Not yet implemented; pending Supabase integration |
+| Login (email/password) | User can sign in with a registered email and password; wrong credentials show an error message; successful sign-in lands on Dashboard | Verified |
+| Guest mode: full flow | A user who taps "Continue as Guest" can generate a route, navigate, and reach the Completion screen without creating an account | Verified |
+| Guest mode: save prompt | On the Completion screen, a guest sees a "Sign up to save this route" prompt instead of the save form | Verified |
+| Guest mode: pending route restore | A guest who completes a route, signs up, and returns to the app sees the completed route restored on the Completion screen | Verified |
+| Authenticated save | A signed-in user can label and save a completed route; it appears in Saved Routes | Verified |
+| Saved routes list | Saved Routes screen shows all saved routes for the authenticated user, newest first | Verified |
+| Delete saved route | Deleting a route from Saved Routes removes it from the list without affecting other entries | Verified |
+| Rate limiting | More than 10 requests/minute from the same IP to `/generate-route` returns a 429 | Verified |
+| Share card | Tapping share on the Completion screen exports the route card via the system share sheet | Verified |
 
 Total logged development time for Milestone 1: 84 hours across both team members, tracked weekly by task and category in the project log.
 
 ### User testing
 
-No structured user testing round has been run yet. Feedback so far has come from the two team members testing on their own devices during development, not from people outside the team. A short feedback round, similar in spirit to a usability pass, is planned for Milestone 2 or 3, once the Navigation and Completion screens have had more time in people's hands. Until then, this section is a placeholder rather than a result.
+No structured user testing round has been run yet. Feedback so far has come from the two team members testing on their own devices during development, not from people outside the team. A short usability round is planned for Milestone 2 or 3, once the Navigation and Completion screens have had more time in users' hands. Until then, this section is a placeholder, not a result.

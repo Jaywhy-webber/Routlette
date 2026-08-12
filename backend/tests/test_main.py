@@ -185,7 +185,8 @@ def mocked_generation(monkeypatch):
         return result
 
     with patch.object(main, "generate_clue", new=AsyncMock(side_effect=fake_generate_clue)), \
-         patch.object(main, "apply_sentiment_and_rank", new=AsyncMock(side_effect=fake_apply_sentiment_and_rank)) as mock_sentiment:
+         patch.object(main, "apply_sentiment_and_rank", new=AsyncMock(side_effect=fake_apply_sentiment_and_rank)) as mock_sentiment, \
+         patch.object(main, "resolve_neighbourhood", return_value="Testville"):
         yield mock_sentiment
 
 
@@ -199,8 +200,9 @@ def test_generate_route_default_params_returns_200_with_stops(client, mocked_gen
     assert "stops" in body
     assert 0 < len(body["stops"]) <= 3  # default num_food=2 + num_activities=1
     for stop in body["stops"]:
-        for key in ("name", "category", "vibe", "address", "lat", "lng", "price_level", "score", "clue", "side_quest"):
+        for key in ("name", "category", "vibe", "address", "lat", "lng", "price_level", "score", "clue", "side_quest", "neighbourhood"):
             assert key in stop
+        assert stop["neighbourhood"] == "Testville"
         assert "place_id" not in stop
         assert "review_snippets" not in stop
 
